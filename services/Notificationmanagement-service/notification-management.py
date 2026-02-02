@@ -29,7 +29,6 @@ load_dotenv()
 def pushNotification():
     ## AWS Lambda Authentication Adapter for us to authenticate our backend to push messages to FCM.
     authentication_result = requests.post("https://vxyrvhbczwwjsytja4riojwe6u0ffwwa.lambda-url.ap-southeast-1.on.aws/").json()
-    print(authentication_result)
     if authentication_result['access_token'] != None:
         token = authentication_result['access_token']
         project_id = "notification-is213"
