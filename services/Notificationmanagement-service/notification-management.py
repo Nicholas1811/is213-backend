@@ -49,6 +49,7 @@ def payloadConstruction(authentication_result):
         ## this is the device registration token you should get from the client app.
         ## this is the authentication between the FCM and the client (authenticate client with FCM)
         ## temp keys, we will be tying our users to this.
+            ## TODO, get current user's tokens.
             "token": "cqK8dOj6-OI5RWNmm5sgR0:APA91bEM2_sMb-mzcBOBkxtUsFemrh98L9pCogX4FaTj6fooWArsW2n3A1g2_OxjFoDnYlK_b5ioDQ1PZIlv_70jlaWuM8asRITvraSe_3I8kF7KPg7wn0g",
             "notification": {
                 "title": "Hello 👋",
@@ -72,6 +73,10 @@ def pushNotificationWorkflow():
         information =  payloadConstruction(authentication_result)
         response = requests.post(information['fcm_url'], headers=information['headers'], data=json.dumps(information['payload']))
         print(response.status_code, response.text)
+
+##TODO, add to notifications DB.
+def addToOutsystemsDB():
+    pass
 
 @app.post("/push-notification")
 def pushNotification():
