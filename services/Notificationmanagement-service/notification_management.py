@@ -6,7 +6,6 @@ from pyexpat.errors import messages
 from fastapi import FastAPI
 import requests
 import json
-import pprint
 
 import os
 from dotenv import load_dotenv
