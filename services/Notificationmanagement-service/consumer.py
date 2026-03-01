@@ -5,7 +5,14 @@ import pika
 import json
 import time
 from notification_management import pushNotificationWorkflow
-
+# Roughly, we need this for each event.
+# {
+#     "eventType": "order.created",
+#     "userId": 123,
+#     "data": {
+#         "orderId": 456
+#     }
+# }
 def connect_rabbit():
     while True:
         try:
@@ -30,19 +37,24 @@ channel.queue_declare(
 channel.queue_bind(
     exchange="notification-exchange",
     queue="notification.queue",
-    routing_key="#"
+    routing_key="#.failed"
+)
+
+channel.queue_bind(
+    exchange="notification-exchange",
+    queue="notification.queue",
+    routing_key="#.created"
+)
+
+channel.queue_bind(
+    exchange="notification-exchange",
+    queue="notification.queue",
+    routing_key="#.success"
 )
 def callback(ch, method, properties, body):
-
     event = json.loads(body)
     print(f"Callback methods run with {event}", flush=True)
-
     pushNotificationWorkflow()
-    ## Event body should be like this
-    ##{
-    # eventName, status, userId, datetime, bindingKey
-    # }
-    # Notif stuff will be here.
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 print("Consumer is now waiting for messages...", flush=True)
