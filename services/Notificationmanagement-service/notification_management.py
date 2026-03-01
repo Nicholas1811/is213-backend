@@ -8,9 +8,9 @@ from socket import fromfd
 from fastapi import FastAPI
 import requests
 import json
-from dto.notif_token import NotificationToken
-from dto.header import Header
-from dto.notification import Notification
+from types.notif_token import NotificationToken
+from types.header import Header
+from types.notification import Notification
 import os
 from dotenv import load_dotenv
 
