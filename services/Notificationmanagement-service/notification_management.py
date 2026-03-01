@@ -77,8 +77,4 @@ def pushNotificationWorkflow():
 def addToOutsystemsDB():
     pass
 
-@app.post("/push-notification")
-def pushNotification():
-    pushNotificationWorkflow()
-
 
