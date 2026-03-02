@@ -1,12 +1,10 @@
 services:
-
   notification-rabbitmq-handler:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
-
   notification-mgmt-service:
     build: ./Notificationmanagement-service
     container_name: notification-mgmt-service
@@ -24,3 +22,20 @@ services:
       - "8080:8080"
     depends_on:
       - notification-rabbitmq-handler
+
+  keycloak-esd:
+    image: quay.io/keycloak/keycloak:latest
+    command:
+      - start-dev
+    ports:
+      - "8081:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://${AWS_RDS_ENDPOINT}:5432/keycloak_esd
+      KC_DB_USERNAME: ${AWS_RDS_DB_USERNAME}
+      KC_DB_PASSWORD: ${AWS_RDS_MASTER_PASSWORD}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTPS_ENABLED: false
+    expose:
+      - "8080"
