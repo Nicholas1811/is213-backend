@@ -85,51 +85,51 @@ def event_dictionary(event):
     sample_dict = {
         "order.created" : {
             "title" : "Order created",
-            "body" : f"Your order has been created. The order id is {event['event_original_id']}"
+            "body" : f"Your order has been created. The order id is {event['event_original_id']}. To view more, click on me!"
         },
         "order.success" : {
             "title" : "Order Success",
-            "body" : f"Your order has been successfully processed. The order id is {event['event_original_id']}"
+            "body" : f"Your order has been successfully processed. The order id is {event['event_original_id']}. To view more, click on me!"
         },
         "order.failure" : {
             "title" : "Order failure",
-            "body" : f"Your order has failed. The order id is {event['event_original_id']}"
+            "body" : f"Your order has failed. The order id is {event['event_original_id']}. To view more, click on me!"
         },
         "point.created" : {
             "title" : "Point created",
-            "body" : f"Your point request has been created. The point tracking id is {event['event_original_id']}"
+            "body" : f"Your point request has been created. The point tracking id is {event['event_original_id']}. To view more, click on me!"
         },
         "point.success" : {
             "title" : "Point success",
-            "body" : f"Your point request has been processed successfully. The point tracking id is {event['event_original_id']}"
+            "body" : f"Your point request has been processed successfully. The point tracking id is {event['event_original_id']}. To view more, click on me!"
         },
         "point.failure" : {
             "title" : "Point failure",
-            "body" : f"Your point request has failed. The point tracking id is {event['event_original_id']}"
+            "body" : f"Your point request has failed. The point tracking id is {event['event_original_id']}. To view more, click on me!"
         },
         "payment.created" : {
             "title" : "Payment created",
-            "body" : f"Your payment request has been created. The payment tracking id is {event['event_original_id']}"
+            "body" : f"Your payment request has been created. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
         },
         "payment.success" : {
             "title" : "Payment success",
-            "body" : f"Your payment request has succeeded. The payment tracking id is {event['event_original_id']}"
+            "body" : f"Your payment request has succeeded. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
         },
         "payment.failure" : {
             "title" : "Payment failure",
-            "body" : f"Your payment request has failed. The payment tracking id is {event['event_original_id']}"
+            "body" : f"Your payment request has failed. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
         },
         'refund.created':{
             "title" : "Refund created",
-            "body" : f"Your refund request has been created. The refund tracking id is {event['event_original_id']}"
+            "body" : f"Your refund request has been created. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
         },
         'refund.success':{
             "title" : "Refund success",
-            "body" : f"Your refund request has succeeded. The refund tracking id is {event['event_original_id']}"
+            "body" : f"Your refund request has succeeded. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
         },
         'refund.failure':{
             "title" : "Refund failure",
-            "body" : f"Your refund request has failed. The refund tracking id is {event['event_original_id']}"
+            "body" : f"Your refund request has failed. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
         }
     }
     return sample_dict.get(eventKey, {
