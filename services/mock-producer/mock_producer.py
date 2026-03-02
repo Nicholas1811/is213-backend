@@ -25,10 +25,12 @@ def publish_event():
 
     event = {
         "eventName": "proof.concept",
+        "itemId" : "specific id we might need to send over",
         "status": "SUCCESS",
         "userId": 123,
         "datetime": "2026-02-27T15:45:00"
     }
+
     channel.basic_publish(
         exchange="notification-exchange",
         routing_key="test",
@@ -36,5 +38,4 @@ def publish_event():
         properties=pika.BasicProperties(delivery_mode=2)
     )
     print("Message published.", flush=True)
-    #connection.close()
 print("Waiting to send")
