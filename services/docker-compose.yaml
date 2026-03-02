@@ -1,6 +1,4 @@
 services:
-  #  api-gateway:
-  #    build:
   notification-rabbitmq-handler:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -10,8 +8,21 @@ services:
   notification-mgmt-service:
     build: ./Notificationmanagement-service
     container_name: notification-mgmt-service
+    command: python consumer.py
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
+    depends_on:
+      - notification-rabbitmq-handler
+
+  mock_producer:
+    build: ./mock-producer
     ports:
       - "8080:8080"
+    depends_on:
+      - notification-rabbitmq-handler
+
   keycloak-esd:
     image: quay.io/keycloak/keycloak:latest
     command:

@@ -3,4 +3,4 @@ uvicorn
 requests
 dotenv
 pika
-flasgger
+Flask

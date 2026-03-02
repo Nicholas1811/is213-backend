@@ -1,12 +1,16 @@
 from doctest import debug
 from hmac import new
 from http.client import responses
+from idlelib.pyshell import UserInputTaggingDelegator
 from pyexpat.errors import messages
+from socket import fromfd
 
 from fastapi import FastAPI
 import requests
 import json
-
+from dto.notif_token import NotificationToken
+from dto.header import Header
+from dto.notification import Notification
 import os
 from dotenv import load_dotenv
 
@@ -15,70 +19,136 @@ app = FastAPI()
 ## this thing does a push to the DB
 
 load_dotenv()
-## workflow for this push-notificaton
 
-## 1. when frontend approves, it will generate a token_id, which will be sent to FCM directly.
-## 2. we should store the token in an outsystems db, so that we can always query and check later.
-## 3. After send to FCM, then now, everything is using that to authenticate.
-## 4. When there is an event, the load will be passed to this method. the method does a few things.
-## 5. it adds to outsystems Notifcations DB, and then from there, this method to send it straight to FCM.
-## 6. FCM then send to the device using the token_id it received from this method.
-
-## AWS Lambda Authentication Adapter for us to authenticate our backend to push messages to FCM.
-## send to outsystems db
-## send to FCM.
-
-## Making workflow boundaries clear.
+# Authentication for lambda.
 def lambdaAuthenticate():
     authentication_result = requests.post("https://vxyrvhbczwwjsytja4riojwe6u0ffwwa.lambda-url.ap-southeast-1.on.aws/").json()
     if(authentication_result!= None):
         return authentication_result['access_token']
     return None
 
+# current user tokens
+def getCurrentUserTokens(userId):
+    user_tokens = requests.get(f"https://personal-fsn5aajc.outsystemscloud.com/NotificationTokenService/rest/NotificationTokens/notificationtokens/{userId}")
+    user_tokens.raise_for_status()
+    data = user_tokens.json()
+    result = [NotificationToken(item['Id'], item['createdAt'], item['device_token'], item['userId'])for item in data]
+    return result
+
 ## Making the payload for each notification.
-def payloadConstruction(authentication_result):
-    project_id = "notification-is213"
-    fcm_url = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
-    headers = {
-        "Authorization": f"Bearer {authentication_result}",
-        "Content-Type": "application/json; UTF-8",
-    }
-    payload = {
-        "message": {
-        ## this is the device registration token you should get from the client app.
-        ## this is the authentication between the FCM and the client (authenticate client with FCM)
-        ## temp keys, we will be tying our users to this.
-            ## TODO, get current user's tokens.
-            "token": "cqK8dOj6-OI5RWNmm5sgR0:APA91bEM2_sMb-mzcBOBkxtUsFemrh98L9pCogX4FaTj6fooWArsW2n3A1g2_OxjFoDnYlK_b5ioDQ1PZIlv_70jlaWuM8asRITvraSe_3I8kF7KPg7wn0g",
-            "notification": {
-                "title": "Hello 👋",
-                "body": "This is a test notification from Python",
-            },
-            "data": {
-                "key1": "value1",
-                "key2": "value2"
+def payloadConstruction(device_token, event):
+    authentication_result = lambdaAuthenticate()
+    if(authentication_result != None):
+        fcm_url = f"https://fcm.googleapis.com/v1/projects/notification-is213/messages:send" #boleh hardcode, no worries.
+        content_type = "application/json; UTF-8"
+        headers = Header(authentication_result, content_type).showHeader()
+
+        payload = {
+            "message": {
+                ## TODO, get current user's tokens.
+                "token": f"{device_token}",
+                "notification": {
+                    **event_dictionary(event)
+                },
+                "data": {
+                    "type": "binding.key",
+                }
             }
         }
+        return {
+            "headers" : headers,
+            "payload" : payload,
+            "fcm_url" : fcm_url
+        }
+    return None
+
+## Pushed to the DB
+def addToNotifications(event, payloadInfo):
+    notification = Notification(
+        payloadInfo['payload']['message']['notification']['title'],
+        payloadInfo['payload']['message']['notification']['body'],
+        event['key'],
+        event['userId'],
+        event['event_id']
+    ).notification_body()
+    print("Payload being sent:", flush=True)
+    print(json.dumps(notification, indent=2), flush=True)
+    print(type(notification), flush=True)
+    result = requests.post("https://personal-fsn5aajc.outsystemscloud.com/NotificationService/rest/Notifications/notifications", json=notification)
+    print("===START OF RESULT===")
+    print(result, flush=True)
+    print("===END OF RESULT===")
+
+## The main push.
+def event_dictionary(event):
+    eventKey = event['key']
+    sample_dict = {
+        "order.created" : {
+            "title" : "Order created",
+            "body" : f"Your order has been created. The order id is {event['event_original_id']}. To view more, click on me!"
+        },
+        "order.success" : {
+            "title" : "Order Success",
+            "body" : f"Your order has been successfully processed. The order id is {event['event_original_id']}. To view more, click on me!"
+        },
+        "order.failure" : {
+            "title" : "Order failure",
+            "body" : f"Your order has failed. The order id is {event['event_original_id']}. To view more, click on me!"
+        },
+        "point.created" : {
+            "title" : "Point created",
+            "body" : f"Your point request has been created. The point tracking id is {event['event_original_id']}. To view more, click on me!"
+        },
+        "point.success" : {
+            "title" : "Point success",
+            "body" : f"Your point request has been processed successfully. The point tracking id is {event['event_original_id']}. To view more, click on me!"
+        },
+        "point.failure" : {
+            "title" : "Point failure",
+            "body" : f"Your point request has failed. The point tracking id is {event['event_original_id']}. To view more, click on me!"
+        },
+        "payment.created" : {
+            "title" : "Payment created",
+            "body" : f"Your payment request has been created. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
+        },
+        "payment.success" : {
+            "title" : "Payment success",
+            "body" : f"Your payment request has succeeded. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
+        },
+        "payment.failure" : {
+            "title" : "Payment failure",
+            "body" : f"Your payment request has failed. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
+        },
+        'refund.created':{
+            "title" : "Refund created",
+            "body" : f"Your refund request has been created. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
+        },
+        'refund.success':{
+            "title" : "Refund success",
+            "body" : f"Your refund request has succeeded. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
+        },
+        'refund.failure':{
+            "title" : "Refund failure",
+            "body" : f"Your refund request has failed. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
+        }
     }
-    return {
-        "headers" : headers,
-        "payload" : payload,
-        "fcm_url" : fcm_url
-    }
+    return sample_dict.get(eventKey, {
+        "title": "Unknown Event",
+        "body": "An event occurred."
+    })
+def pushNotificationWorkflow(event):
+    user_tokens = getCurrentUserTokens(event['userId'])
+    payloadInfo = []
+    for token_obj in user_tokens:
+        information = payloadConstruction(token_obj.getDeviceToken(), event)
+        if(information != None):
+            response = requests.post(information['fcm_url'], headers=information['headers'], data=json.dumps(information['payload']))
+            print(response.status_code, response.text)
+            payloadInfo = information
+    addToNotifications(event, payloadInfo)
 
-def pushNotificationWorkflow():
-    authentication_result = lambdaAuthenticate()
-    if authentication_result:
-        information =  payloadConstruction(authentication_result)
-        response = requests.post(information['fcm_url'], headers=information['headers'], data=json.dumps(information['payload']))
-        print(response.status_code, response.text)
 
-##TODO, add to notifications DB.
-def addToOutsystemsDB():
-    pass
 
-@app.post("/push-notification")
-def pushNotification():
-    pushNotificationWorkflow()
+
 
 
