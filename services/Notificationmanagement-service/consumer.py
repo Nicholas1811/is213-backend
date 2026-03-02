@@ -54,7 +54,7 @@ channel.queue_bind(
 def callback(ch, method, properties, body):
     event = json.loads(body)
     print(f"Callback methods run with {event}", flush=True)
-    pushNotificationWorkflow()
+    pushNotificationWorkflow(event)
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 print("Consumer is now waiting for messages...", flush=True)
