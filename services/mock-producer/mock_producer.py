@@ -9,7 +9,7 @@ import uuid
 def connect_rabbit():
     while True:
         try:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="queue-container"))
             return connection
         except pika.exceptions.AMQPConnectionError:
             time.sleep(5)
@@ -27,6 +27,7 @@ def publish_event():
 
     ## Mock events, you guys can use this as reference to know what to send.
     event = {
+        ##"event_id" : "abc-def-ghi",
         "event_id" : str(uuid.uuid4()),
         "key" : "order.created", #binding key
         "userId" : "abc",

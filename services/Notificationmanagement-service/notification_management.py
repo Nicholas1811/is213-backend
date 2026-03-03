@@ -13,7 +13,6 @@ from dto.header import Header
 from dto.notification import Notification
 import os
 from dotenv import load_dotenv
-
 app = FastAPI()
 
 ## this thing does a push to the DB
@@ -36,8 +35,8 @@ def getCurrentUserTokens(userId):
     return result
 
 ## Making the payload for each notification.
-def payloadConstruction(device_token, event):
-    authentication_result = lambdaAuthenticate()
+def payloadConstruction(device_token, event, authentication_result):
+
     if(authentication_result != None):
         fcm_url = f"https://fcm.googleapis.com/v1/projects/notification-is213/messages:send" #boleh hardcode, no worries.
         content_type = "application/json; UTF-8"
@@ -45,7 +44,6 @@ def payloadConstruction(device_token, event):
 
         payload = {
             "message": {
-                ## TODO, get current user's tokens.
                 "token": f"{device_token}",
                 "notification": {
                     **event_dictionary(event)
@@ -62,24 +60,74 @@ def payloadConstruction(device_token, event):
         }
     return None
 
-## Pushed to the DB
-def addToNotifications(event, payloadInfo):
+# def addToNotifications(notification):
+#     print("Payload being saved:", flush=True)
+#     print(json.dumps(notification, indent=2), flush=True)
+#
+#     result = requests.post(
+#         "https://personal-fsn5aajc.outsystemscloud.com/NotificationService/rest/Notifications/notifications",
+#         json=notification
+#     )
+#
+#     print("===START OF RESULT===")
+#     print(result, flush=True)
+#     print("===END OF RESULT===")
+
+## The main push.
+
+def addToNotifications(notification):
+    try:
+        result = requests.post(
+            "https://personal-fsn5aajc.outsystemscloud.com/NotificationService/rest/Notifications/notifications",
+            json=notification
+        )
+
+        # 409 = duplicate event_id
+        if result.status_code == 409:
+            print("Duplicate event detected. Skipping processing.")
+            return False
+
+        result.raise_for_status()
+        return True
+
+    except Exception as e:
+        print("Persistence error:", e)
+        return False
+
+def pushNotificationWorkflow(event):
+    notif_content = event_dictionary(event)
     notification = Notification(
-        payloadInfo['payload']['message']['notification']['title'],
-        payloadInfo['payload']['message']['notification']['body'],
+        notif_content['title'],
+        notif_content['body'],
         event['key'],
         event['userId'],
         event['event_id']
     ).notification_body()
-    print("Payload being sent:", flush=True)
-    print(json.dumps(notification, indent=2), flush=True)
-    print(type(notification), flush=True)
-    result = requests.post("https://personal-fsn5aajc.outsystemscloud.com/NotificationService/rest/Notifications/notifications", json=notification)
-    print("===START OF RESULT===")
-    print(result, flush=True)
-    print("===END OF RESULT===")
+    saved = addToNotifications(notification)
+    if not saved:
+        return
+    authentication_result = lambdaAuthenticate()
+    if not authentication_result:
+        print("Authentication failed.")
+        return
 
-## The main push.
+    user_tokens = getCurrentUserTokens(event['userId'])
+
+    for token_obj in user_tokens:
+        information = payloadConstruction(
+            token_obj.getDeviceToken(),
+            event,
+            authentication_result
+        )
+
+        if information:
+            response = requests.post(
+                information['fcm_url'],
+                headers=information['headers'],
+                data=json.dumps(information['payload'])
+            )
+            print(response.status_code, response.text)
+
 def event_dictionary(event):
     eventKey = event['key']
     sample_dict = {
@@ -136,19 +184,3 @@ def event_dictionary(event):
         "title": "Unknown Event",
         "body": "An event occurred."
     })
-def pushNotificationWorkflow(event):
-    user_tokens = getCurrentUserTokens(event['userId'])
-    payloadInfo = []
-    for token_obj in user_tokens:
-        information = payloadConstruction(token_obj.getDeviceToken(), event)
-        if(information != None):
-            response = requests.post(information['fcm_url'], headers=information['headers'], data=json.dumps(information['payload']))
-            print(response.status_code, response.text)
-            payloadInfo = information
-    addToNotifications(event, payloadInfo)
-
-
-
-
-
-
