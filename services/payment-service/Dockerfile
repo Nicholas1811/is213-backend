@@ -7,6 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY payment_service.py ./
 COPY dto ./dto
 
-CMD ["fastapi", "run", "payment_service.py", "--port", "80"]
+CMD ["fastapi", "run", "payment_service.py", "--port", "8081"]
 
 # ENTRYPOINT ["top", "-b"]
