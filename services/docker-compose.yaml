@@ -39,3 +39,37 @@ services:
       KC_HTTPS_ENABLED: false
     expose:
       - "8080"
+
+  payment-service:
+    build: ./payment-service
+    ports: 
+      - "8082:8080"
+    expose:
+      - "8080"
+
+  kong:
+      image: kong:latest # Kong Gateway image (default to latest version)
+      container_name: kong-api-gateway
+      volumes:
+        - ./kong.yml:/usr/local/kong/declarative/kong.yml  
+      environment:
+        KONG_DATABASE: off
+        KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml  
+        KONG_PROXY_ACCESS_LOG: /dev/stdout
+        KONG_ADMIN_ACCESS_LOG: /dev/stdout
+        KONG_PROXY_ERROR_LOG: /dev/stderr
+        KONG_ADMIN_ERROR_LOG: /dev/stderr
+        KONG_ADMIN_LISTEN: 0.0.0.0:8001
+        KONG_ADMIN_GUI_URL: http://localhost:8002
+      ports:
+        - "8000:8000"
+        - "8443:8443"
+        - "8001:8001"
+        - "8444:8444"
+        - "8002:8002"
+        - "8445:8445"
+        - "8003:8003"
+        - "8004:8004"
+      depends_on: # all exposed services to be declared here and kong.yml
+      - payment-service
+      - keycloak-esd
