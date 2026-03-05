@@ -15,3 +15,4 @@ services:
       - name: keycloak-esd
         paths:
           - /user-auth
+  ## should be dont need for notification for a route, this one should be handled internally.

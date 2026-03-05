@@ -5,14 +5,6 @@ import pika
 import json
 import time
 from notification_management import pushNotificationWorkflow
-# Roughly, we need this for each event.
-# {
-#     "eventType": "order.created",
-#     "userId": 123,
-#     "data": {
-#         "orderId": 456
-#     }
-# }
 def connect_rabbit():
     while True:
         try:
@@ -71,21 +63,6 @@ channel.queue_bind(
     routing_key="deadletter"
 )
 
-# def callback(ch, method, properties, body):
-#     event = json.loads(body)
-#
-#     try:
-#         pushNotificationWorkflow(event)
-#         # If everything succeeds → ACK
-#         ch.basic_ack(delivery_tag=method.delivery_tag)
-#
-#     except Exception as e:
-#         print("Processing failed:", e, ". DLQ should have 1 message now")
-#         # Send message to DLQ
-#         ch.basic_nack(
-#             delivery_tag=method.delivery_tag,
-#             requeue=False
-#         )
 def callback(ch, method, properties, body):
     event = json.loads(body)
     try:
