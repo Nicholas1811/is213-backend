@@ -13,6 +13,9 @@ from dto.header import Header
 from dto.notification import Notification
 import os
 from dotenv import load_dotenv
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
+
 app = FastAPI()
 
 ## this thing does a push to the DB
@@ -21,10 +24,23 @@ load_dotenv()
 
 # Authentication for lambda.
 def lambdaAuthenticate():
-    authentication_result = requests.post("https://vxyrvhbczwwjsytja4riojwe6u0ffwwa.lambda-url.ap-southeast-1.on.aws/").json()
-    if(authentication_result!= None):
-        return authentication_result['access_token']
-    return None
+    try:
+        credentials_info = {
+            "type": "service_account",
+            "client_email": os.environ["client_email"],
+            "private_key": os.environ["private_key"].replace("\\n", "\n"),
+            "token_uri": "https://oauth2.googleapis.com/token"
+        }
+        scopes = ["https://www.googleapis.com/auth/firebase.messaging"]
+        credentials = service_account.Credentials.from_service_account_info(
+            credentials_info,
+            scopes=scopes
+        )
+        credentials.refresh(Request())
+        return credentials.token
+
+    except Exception as err:
+        return None
 
 # current user tokens
 def getCurrentUserTokens(userId):
@@ -59,21 +75,6 @@ def payloadConstruction(device_token, event, authentication_result):
             "fcm_url" : fcm_url
         }
     return None
-
-# def addToNotifications(notification):
-#     print("Payload being saved:", flush=True)
-#     print(json.dumps(notification, indent=2), flush=True)
-#
-#     result = requests.post(
-#         "https://personal-fsn5aajc.outsystemscloud.com/NotificationService/rest/Notifications/notifications",
-#         json=notification
-#     )
-#
-#     print("===START OF RESULT===")
-#     print(result, flush=True)
-#     print("===END OF RESULT===")
-
-## The main push.
 
 def addToNotifications(notification):
     try:
