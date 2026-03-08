@@ -1,6 +1,7 @@
 from temporalio import activity
 import requests
 
+## Calls wrapper payment service
 @activity.defn
 async def charge_payment(user_id: int, amount: float):
 
@@ -14,6 +15,7 @@ async def charge_payment(user_id: int, amount: float):
 
     return r.json()
 
+## Calls composite refund service
 @activity.defn
 async def refund_payment(payment_id: str):
 

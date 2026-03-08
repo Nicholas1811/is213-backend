@@ -2,6 +2,8 @@ from temporalio import activity
 import requests
 
 @activity.defn
+
+## From here, need qty, status, total paid as well.
 async def create_order(user_id, listing_id, payment_id, point_id):
 
     r = requests.post(

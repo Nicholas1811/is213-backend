@@ -179,7 +179,12 @@ def event_dictionary(event):
         'refund.failure':{
             "title" : "Refund failure",
             "body" : f"Your refund request has failed. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
-        }
+        },
+        'purchase.success':{
+            "title" : "Purchase success",
+            "body" : f"Your purchase is done. The order is id is {event['event_original_id']}. To view more, click on me!"
+        },
+
     }
     return sample_dict.get(eventKey, {
         "title": "Unknown Event",

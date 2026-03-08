@@ -1,11 +1,13 @@
 import pika
 from temporalio import activity
 
+#publish to rabbit.
+# I need the orderId, userId as well, and the eventType.
 @activity.defn
 async def publish_purchase_event(order_id):
 
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters("rabbitmq")
+        pika.ConnectionParameters("queue-container")
     )
 
     channel = connection.channel()

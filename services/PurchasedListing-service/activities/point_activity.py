@@ -2,6 +2,7 @@ from temporalio import activity
 import requests
 
 # Use points, POST for points.
+## Add in fields for like type (reduction).
 @activity.defn
 async def use_points(user_id: int, points: int):
 
