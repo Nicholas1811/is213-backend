@@ -1,3 +1,0 @@
-[submodule "services/listing-service"]
-	path = services/listing-service
-	url = https://github.com/Bernardcks/jms-productservice.git
