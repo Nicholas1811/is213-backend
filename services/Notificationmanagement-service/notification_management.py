@@ -54,10 +54,7 @@ def getCurrentUserTokens(userId):
 def payloadConstruction(device_token, event, authentication_result):
 
     if(authentication_result != None):
-        fcm_url = f"https://fcm.googleapis.com/v1/projects/notification-is213/messages:send" #boleh hardcode, no worries.
-        content_type = "application/json; UTF-8"
-        headers = Header(authentication_result, content_type).showHeader()
-
+        headers = Header(authentication_result, "application/json; UTF-8").showHeader()
         payload = {
             "message": {
                 "token": f"{device_token}",
@@ -72,7 +69,7 @@ def payloadConstruction(device_token, event, authentication_result):
         return {
             "headers" : headers,
             "payload" : payload,
-            "fcm_url" : fcm_url
+            "fcm_url" : "https://fcm.googleapis.com/v1/projects/notification-is213/messages:send"
         }
     return None
 

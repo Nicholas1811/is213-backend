@@ -14,10 +14,12 @@ async def use_points(user_id: int, points: int):
     )
     return r.json()
 
+
+##Change to the refund microservice
 @activity.defn
 async def refund_points(transaction_id: str):
 
     requests.post(
-        "http://points-service:8080/points/refund",
+        "http://refund-service:8080/points",
         json={"transactionId": transaction_id}
     )
