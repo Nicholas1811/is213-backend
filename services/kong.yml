@@ -1,0 +1,18 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: payment-service
+    url: http://payment-service:8081
+    routes:
+      - name: payment-route
+        paths:
+          - /payments
+
+  - name: keycloak-auth
+    url: http://keycloak-esd:8080
+    routes:
+      - name: keycloak-esd
+        paths:
+          - /user-auth
+  ## should be dont need for notification for a route, this one should be handled internally.

@@ -27,11 +27,10 @@ def publish_event():
 
     ## Mock events, you guys can use this as reference to know what to send.
     event = {
-        ##"event_id" : "abc-def-ghi",
         "event_id" : str(uuid.uuid4()),
         "key" : "order.created", #binding key
-        "userId" : "abc",
-        "event_original_id" : "your id from your original table, on FE, this one might onclick and query"
+        "userId" : "user id that you want to send notification to, on FE",
+        "event_original_id" : "your id from your original table, on FE, this one for onclick and query"
     }
 ## Sample routing key, change according to your needs.
     channel.basic_publish(
