@@ -21,7 +21,7 @@ services:
   mock_producer:
     build: ./mock-producer
     ports:
-      - "8080:8080"
+      - "8080"
     depends_on:
       - rabbitmq
 
@@ -30,7 +30,7 @@ services:
     command:
       - start-dev
     ports:
-      - "8081:8080"
+      - "8080"
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://${AWS_RDS_ENDPOINT}:5432/keycloak_esd
@@ -50,7 +50,7 @@ services:
     env_file:
       - ./user-service/.env
     ports:
-      - "8083:8080"
+      - "8080"
 
   payment-service:
     build:
@@ -60,7 +60,7 @@ services:
     env_file:
       - ./payment-service/.env
     ports:
-      - "8082:8080"
+      - "8080"
     expose:
       - "8080"
 
@@ -72,7 +72,7 @@ services:
     env_file:
       - ./listing-service/.env
     ports:
-      - "8084:8080"
+      - "8080"
     expose:
       - "8080"
 
@@ -84,7 +84,7 @@ services:
     env_file:
       - ./order-service/.env
     ports:
-      - "8085:8080"
+      - "8080"
     expose:
       - "8080"
 
@@ -96,7 +96,7 @@ services:
     env_file:
       - ./point-service/.env
     ports:
-      - "8086:8080"
+      - "8080"
     expose:
       - "8080"
 
@@ -108,7 +108,7 @@ services:
     env_file:
       - ./ai-service/.env
     ports:
-      - "8087:8080"
+      - "8080"
     expose:
       - "8080"
 
@@ -132,7 +132,7 @@ services:
     env_file:
       - ./Refund-service/.env
     ports:
-      - "8089:8080"
+      - "8080"
     expose:
       - "8080"
   kong:
