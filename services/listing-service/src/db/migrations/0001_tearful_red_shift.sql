@@ -1,0 +1,1 @@
+ALTER TABLE "listings" ADD COLUMN "best_before" timestamp with time zone DEFAULT now();
