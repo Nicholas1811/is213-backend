@@ -3,7 +3,7 @@ _transform: true
 
 services:
   - name: payment-service
-    url: http://payment-service:8080
+    url: http://payment-service:8081/payment
     routes:
       - name: payment-route
         paths:
