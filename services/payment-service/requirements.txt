@@ -4,3 +4,5 @@ pika
 flasgger
 dotenv
 requests
+stripe
+python-dotenv
