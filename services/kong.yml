@@ -6,11 +6,11 @@ _transform: true
 
 services:
   - name: payment-service
-    url: http://payment-service:8081
+    url: http://payment-service:8081/payment
     routes:
       - name: payment-route
         paths:
-          - /payments
+          - /payment
 
   - name: keycloak-auth
     url: http://keycloak-esd:8080

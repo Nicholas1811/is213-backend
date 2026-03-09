@@ -53,10 +53,14 @@ services:
       - "8080"
 
   payment-service:
+<<<<<<< Updated upstream
     build:
       context: ./payment-service
       dockerfile: Dockerfile
     container_name: payment-service
+=======
+    build: ./payment-service
+>>>>>>> Stashed changes
     env_file:
       - ./payment-service/.env
     ports:
