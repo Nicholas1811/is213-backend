@@ -7,7 +7,7 @@ from temporalio import activity
 async def publish_purchase_event(order_id):
 
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters("queue-container")
+        pika.ConnectionParameters("rabbitmq")
     )
 
     channel = connection.channel()
