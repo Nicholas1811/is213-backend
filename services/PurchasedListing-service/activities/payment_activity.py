@@ -15,7 +15,7 @@ async def charge_payment(user_id: int, amount: float):
 
     return r.json()
 
-## Calls composite refund service
+## Calls refund.
 @activity.defn
 async def refund_payment(payment_id: str):
 
