@@ -10,7 +10,7 @@ from activities.order_activity import create_order
 
 #In this method, we define a worker, in which it needs a workflow and the acitvities to pump the activities into the workflow.
 async def main():
-    client = await Client.connect("localhost:7233")
+    client = await Client.connect("temporal:7233")
     worker = Worker(
         client,
         task_queue="purchase-task-queue",
