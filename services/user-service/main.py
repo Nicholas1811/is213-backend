@@ -76,7 +76,7 @@ def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/users")
+@app.get("/")
 def list_users(limit: int = 10) -> dict:
     safe_limit = max(1, min(limit, 100))
     try:
@@ -90,7 +90,7 @@ def list_users(limit: int = 10) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to query users: {error}") from error
 
 
-@app.get("/users/{user_id}")
+@app.get("/{user_id}")
 def get_user(user_id: UUID) -> dict:
     try:
         with _db_engine().connect() as connection:
@@ -105,7 +105,7 @@ def get_user(user_id: UUID) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to fetch user: {error}") from error
 
 
-@app.post("/users")
+@app.post("/")
 def create_user(payload: dict[str, Any]) -> dict:
     validated_payload = _validated_payload(payload, allow_user_id=True)
 
@@ -121,7 +121,7 @@ def create_user(payload: dict[str, Any]) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to create user: {error}") from error
 
 
-@app.put("/users/{user_id}")
+@app.put("/{user_id}")
 def update_user(user_id: UUID, payload: dict[str, Any]) -> dict:
     validated_payload = _validated_payload(payload, allow_user_id=False)
 
@@ -139,7 +139,7 @@ def update_user(user_id: UUID, payload: dict[str, Any]) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to update user: {error}") from error
 
 
-@app.delete("/users/{user_id}")
+@app.delete("/{user_id}")
 def delete_user(user_id: UUID) -> dict[str, str]:
     try:
         with _db_engine().begin() as connection:
