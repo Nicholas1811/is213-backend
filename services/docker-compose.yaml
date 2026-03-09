@@ -53,14 +53,10 @@ services:
       - "8080"
 
   payment-service:
-<<<<<<< Updated upstream
     build:
       context: ./payment-service
       dockerfile: Dockerfile
     container_name: payment-service
-=======
-    build: ./payment-service
->>>>>>> Stashed changes
     env_file:
       - ./payment-service/.env
     ports:
@@ -85,8 +81,8 @@ services:
       context: ./order-service
       dockerfile: Dockerfile
     container_name: order-service
-    env_file:
-      - ./order-service/.env
+#    env_file:
+#      - ./order-service/.env
     ports:
       - "8080"
     expose:
@@ -94,11 +90,11 @@ services:
 
   point-service:
     build:
-      context: ./point-service
+      context: ./points-service
       dockerfile: Dockerfile
     container_name: point-service
-    env_file:
-      - ./point-service/.env
+#    env_file:
+#      - ./point-service/.env
     ports:
       - "8080"
     expose:
@@ -109,8 +105,8 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: ai-service
-    env_file:
-      - ./ai-service/.env
+#    env_file:
+#      - ./ai-service/.env
     ports:
       - "8080"
     expose:
@@ -121,8 +117,8 @@ services:
       context: ./PurchasedListing-service
       dockerfile: Dockerfile
     container_name: purchase-product-service
-    env_file:
-      - ./PurchasedListing-service/.env
+#    env_file:
+#      - ./PurchasedListing-service/.env
     ports:
       - "8088:8080"
     expose:
@@ -133,8 +129,8 @@ services:
       context: ./Refund-service
       dockerfile: Dockerfile
     container_name: refund-service
-    env_file:
-      - ./Refund-service/.env
+#    env_file:
+#      - ./Refund-service/.env
     ports:
       - "8080"
     expose:
