@@ -70,8 +70,8 @@ services:
       context: ./order-service
       dockerfile: Dockerfile
     container_name: order-service
-#    env_file:
-#      - ./order-service/.env
+    env_file:
+      - ./order-service/.env
     expose:
       - "8080"
 
