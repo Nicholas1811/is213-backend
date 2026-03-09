@@ -8,7 +8,7 @@ from notification_management import pushNotificationWorkflow
 def connect_rabbit():
     while True:
         try:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host="queue-container"))
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
             return connection
         except pika.exceptions.AMQPConnectionError:
             print("Not ready yet.")

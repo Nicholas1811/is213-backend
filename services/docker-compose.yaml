@@ -1,10 +1,12 @@
 services:
-  notification-rabbitmq-handler:
+  rabbitmq:
     image: rabbitmq:3-management
-    container_name: queue-container
+    container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
+    restart: always
+
   notification-mgmt-service:
     build: ./Notificationmanagement-service
     container_name: notification-mgmt-service
@@ -14,14 +16,14 @@ services:
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
     depends_on:
-      - notification-rabbitmq-handler
+      - rabbitmq
 
   mock_producer:
     build: ./mock-producer
     ports:
       - "8080:8080"
     depends_on:
-      - notification-rabbitmq-handler
+      - rabbitmq
 
   keycloak-esd:
     image: quay.io/keycloak/keycloak:latest
@@ -49,13 +51,90 @@ services:
       - ./user-service/.env
     ports:
       - "8083:8080"
+
   payment-service:
-    build: ./payment-service
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    env_file:
+      - ./payment-service/.env
     ports:
       - "8082:8080"
     expose:
       - "8080"
 
+  listing-service:
+    build:
+      context: ./listing-service
+      dockerfile: Dockerfile
+    container_name: listing-service
+    env_file:
+      - ./listing-service/.env
+    ports:
+      - "8084:8080"
+    expose:
+      - "8080"
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    env_file:
+      - ./order-service/.env
+    ports:
+      - "8085:8080"
+    expose:
+      - "8080"
+
+  point-service:
+    build:
+      context: ./point-service
+      dockerfile: Dockerfile
+    container_name: point-service
+    env_file:
+      - ./point-service/.env
+    ports:
+      - "8086:8080"
+    expose:
+      - "8080"
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: ai-service
+    env_file:
+      - ./ai-service/.env
+    ports:
+      - "8087:8080"
+    expose:
+      - "8080"
+
+  purchase-product-service:
+    build:
+      context: ./PurchasedListing-service
+      dockerfile: Dockerfile
+    container_name: purchase-product-service
+    env_file:
+      - ./PurchasedListing-service/.env
+    ports:
+      - "8088:8080"
+    expose:
+      - "8080"
+
+  refund-service:
+    build:
+      context: ./Refund-service
+      dockerfile: Dockerfile
+    container_name: refund-service
+    env_file:
+      - ./Refund-service/.env
+    ports:
+      - "8089:8080"
+    expose:
+      - "8080"
   kong:
     image: kong:latest # Kong Gateway image (default to latest version)
     container_name: kong-api-gateway
@@ -82,3 +161,8 @@ services:
     depends_on: # all exposed services to be declared here and kong.yml
       - payment-service
       - keycloak-esd
+      - user-service
+      - order-service
+      - listing-service
+      - point-service
+      - purchase-product-service

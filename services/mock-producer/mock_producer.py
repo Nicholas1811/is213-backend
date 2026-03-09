@@ -9,7 +9,7 @@ import uuid
 def connect_rabbit():
     while True:
         try:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host="queue-container"))
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
             return connection
         except pika.exceptions.AMQPConnectionError:
             time.sleep(5)
