@@ -1,0 +1,56 @@
+
+
+
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: payment-service
+    url: http://payment-service:8081/payment
+    routes:
+      - name: payment-route
+        paths:
+          - /payment
+
+  - name: keycloak-auth
+    url: http://keycloak-esd:8080
+    routes:
+      - name: keycloak-esd
+        paths:
+          - /user-auth
+
+  - name: user-service
+    url: http://user-service:8080
+    routes:
+      - name: user-route
+        paths:
+          - /users
+  - name: listing-service
+    url: http://listing-service:8080
+    routes:
+      - name: listing-route
+        paths:
+          - /listings
+
+  - name: order-service
+    url: http://order-service:8080
+    routes:
+      - name: order-route
+        paths:
+          - /orders
+
+  - name: point-service
+    url: http://point-service:8080
+    routes:
+      - name: point-route
+        paths:
+          - /points
+
+  - name: purchase-product-service
+    url: http://purchase-product-service:8080
+    routes:
+      - name: purchase-route
+        paths:
+          - /purchases
+
+  ## should be dont need for notification for a route, this one should be handled internally.

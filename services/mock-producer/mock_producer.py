@@ -3,7 +3,9 @@
 import pika
 import json
 import time
-## Code over here can be reused throughout.
+import uuid
+
+## Code over here can be reused throughout in your own services.
 def connect_rabbit():
     while True:
         try:
@@ -13,7 +15,7 @@ def connect_rabbit():
             time.sleep(5)
 
 def publish_event():
-    print("INSIDE", flush=True)
+    print("Event is starting to get published.", flush=True)
     connection = connect_rabbit()
     channel = connection.channel()
 
@@ -23,17 +25,17 @@ def publish_event():
         durable=True
     )
 
+    ## Mock events, you guys can use this as reference to know what to send.
     event = {
-        "eventName": "proof.concept",
-        "itemId" : "specific id we might need to send over",
-        "status": "SUCCESS",
-        "userId": 123,
-        "datetime": "2026-02-27T15:45:00"
+        "event_id" : str(uuid.uuid4()),
+        "key" : "order.created", #binding key
+        "userId" : "user id that you want to send notification to, on FE",
+        "event_original_id" : "your id from your original table, on FE, this one for onclick and query"
     }
-
+## Sample routing key, change according to your needs.
     channel.basic_publish(
         exchange="notification-exchange",
-        routing_key="test",
+        routing_key="order.created", #Here
         body=json.dumps(event),
         properties=pika.BasicProperties(delivery_mode=2)
     )
