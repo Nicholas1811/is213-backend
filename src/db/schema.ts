@@ -1,3 +1,4 @@
+import { z } from "@hono/zod-openapi";
 import { integer, pgEnum, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
@@ -10,6 +11,10 @@ export const listingStatusEnum = pgEnum("listing_status", [
   "cancelled", // Company cancels listing
   "sold_out", // Qty reaches 0
 ]);
+
+export const listingStatusEnumSchema = z.object({
+  status: z.enum(listingStatusEnum.enumValues),
+});
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -27,6 +32,7 @@ export const listings = pgTable("listings", {
     .primaryKey(),
   s3ImageUrl: text("s3_image_url"),
   name: varchar("name", { length: 255 }),
+  description: text("description"),
   qty: integer("qty")
     .default(0),
   unitPriceCents: integer("unit_price_cents"),
@@ -41,15 +47,20 @@ export const listings = pgTable("listings", {
 export const selectListingsSchema = createSelectSchema(listings);
 
 export const insertListingsSchema = createInsertSchema(listings)
-  .required({ status: true })
   .omit({
     s3ImageUrl: true,
     name: true,
+    description: true,
     qty: true,
     unitPriceCents: true,
     bestBefore: true,
+    status: true,
     createdAt: true,
     updatedAt: true,
   });
 
 export const patchListingsSchema = insertListingsSchema.partial();
+
+export const purchaseListingsSchema = z.object({
+  qty: z.coerce.number().int().positive(),
+});
