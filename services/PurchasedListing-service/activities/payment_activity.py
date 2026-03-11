@@ -6,7 +6,7 @@ import requests
 async def charge_payment(user_id: int, amount: float):
 
     r = requests.post(
-        "http://payment-service:8080/pay",
+        "http://payment-service:8080/process-payment",
         json={
             "userId": user_id,
             "amount": amount

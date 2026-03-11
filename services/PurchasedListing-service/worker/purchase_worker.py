@@ -2,15 +2,27 @@ import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
 from workflows.purchase_workflow import PurchaseWorkflow
-from activities.listing_activity import get_listing_price
-from activities.points_activity import use_points
+from activities.get_listing_price import get_listing_price
+from activities.point_activity import use_points
 from activities.payment_activity import charge_payment
-from activities.order_activity import create_order
+from activities.order_creation import create_order
 
 
 #In this method, we define a worker, in which it needs a workflow and the acitvities to pump the activities into the workflow.
+async def connect_temporal():
+    while True:
+        try:
+            client = await Client.connect("temporal:7233")
+            print("Connected to Temporal")
+            return client
+        except Exception:
+            print("Waiting for Temporal...")
+            await asyncio.sleep(3)
+
+
 async def main():
-    client = await Client.connect("temporal:7233")
+    client = await connect_temporal()
+
     worker = Worker(
         client,
         task_queue="purchase-task-queue",

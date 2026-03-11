@@ -97,6 +97,7 @@ def addToNotifications(notification):
 
 def pushNotificationWorkflow(event):
     notif_content = event_dictionary(event)
+    ## Each event should pass around the userId.
     notification = Notification(
         notif_content['title'],
         notif_content['body'],

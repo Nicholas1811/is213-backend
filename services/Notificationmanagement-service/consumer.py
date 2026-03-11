@@ -37,8 +37,6 @@ channel.queue_declare(
     }
 )
 
-
-
 channel.queue_bind(
     exchange="notification-exchange",
     queue="notification.queue",

@@ -3,3 +3,6 @@ protobuf==6.33.5
 temporalio==1.23.0
 types-protobuf==6.32.1.20260221
 typing_extensions==4.15.0
+uvicorn
+flask
+stripe
