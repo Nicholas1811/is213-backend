@@ -18,4 +18,3 @@ export async function unregisterFirebaseSw() {
     console.warn('Failed to unregister SWs', e)
   }
 }
-
