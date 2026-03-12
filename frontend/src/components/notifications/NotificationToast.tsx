@@ -1,6 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, type CSSProperties } from "react";
 
-export default function NotificationToast({ message , onClose, duration = 3000 }) {
+interface NotificationToastProps {
+    message: {
+        title?: string;
+        body?: string;
+    };
+    onClose: () => void;
+    duration?: number;
+}
+
+export default function NotificationToast({ message, onClose, duration = 3000 }: NotificationToastProps) {
     useEffect(() => {
         const timer = setTimeout(onClose, duration);
         return () => clearTimeout(timer);
@@ -15,7 +24,7 @@ export default function NotificationToast({ message , onClose, duration = 3000 }
     );
 }
 
-const styles = {
+const styles: Record<string, CSSProperties> = {
     toast: {
         position: "fixed",
         bottom: "20px",

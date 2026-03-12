@@ -57,11 +57,10 @@ function App() {
     });
     return unsubscribe;
   }, []);
-  const [count, setCount] = useState(0);
 
   return (
-    <ReactKeycloakProvider authClient={keycloak}>
-      <>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
         {showToast && (
           <NotificationToast
             message={showToast}
