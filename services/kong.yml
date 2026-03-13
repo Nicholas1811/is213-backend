@@ -22,12 +22,18 @@ services:
       - name: user-route
         paths:
           - /users
+
   - name: listing-service
     url: http://listing-service:8080
     routes:
       - name: listing-route
         paths:
           - /listings
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
 
   - name: order-service
     url: http://order-service:8080
@@ -35,6 +41,11 @@ services:
       - name: order-route
         paths:
           - /orders
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
 
   - name: point-service
     url: http://point-service:8080
@@ -42,6 +53,11 @@ services:
       - name: point-route
         paths:
           - /points
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
 
   - name: purchase-product-service
     url: http://purchase-product-service:8080
@@ -49,5 +65,10 @@ services:
       - name: purchase-route
         paths:
           - /purchases
+    plugins:
+        - name: rate-limiting
+          config:
+            minute: 20
+            policy: local
 
   ## should be dont need for notification for a route, this one should be handled internally.
