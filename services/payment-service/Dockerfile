@@ -7,6 +7,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY payment_service.py ./
 COPY dto ./dto
 
-CMD ["fastapi", "run", "payment_service.py", "--port", "8081"]
-
+CMD ["uvicorn", "payment_service:app", "--host", "0.0.0.0", "--port", "8080"]
 # ENTRYPOINT ["top", "-b"]

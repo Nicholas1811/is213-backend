@@ -1,5 +1,6 @@
 from temporalio import activity
 import requests
+import uuid
 
 # Use points, POST for points.
 ## Add in fields for like type (reduction).
@@ -12,7 +13,7 @@ async def use_points(data):
             "user_id": data['user_id'],
             "points_changed": data['points_changed'] * -1,
             "transaction_type" : "SPEND",
-            "reference_id" : "a" #Might want to bring the order creation flow on top first.
+            "reference_id" : str(uuid.uuid4()) ## To edit
         }
     )
     if r.status_code >= 400:
@@ -27,7 +28,7 @@ async def refund_points(data):
             "user_id": data['user_id'],
             "points_changed": data['points_changed'],
             "transaction_type" : "REFUND",
-            "reference_id" : "a" #orderID here.
+            "reference_id" : str(uuid.uuid4()) ## To edit.
         }
     )
     if r.status_code >= 400:

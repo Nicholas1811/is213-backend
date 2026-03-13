@@ -9,31 +9,39 @@ import requests
 async def create_order(data):
 
     r = requests.post(
-        "http://order-service:8080/orders",
+        "http://order-service:8080/",
         json={
             "user_id" : data['user_id'],
             "listing_id": data['listing_id'],
-            "status" : "created",
+            "status" : "PENDING",
             "total_paid" : data['total_paid'],
             "point_id" : data['point_id'],
             "payment_id" : "Empty",
             "qty" : data['qty'],
         }
     )
+    print("Order data is: " + str(r))
+    if r.status_code >= 400 or r.status_code >= 500:
+        raise Exception(f"Order service failed: {r.status_code} {r.text}")
     return r.json()
 
 @activity.defn
-async def update_order_status(orderId):
-    r = requests.put(f"http://order-service:8080/orders/{orderId}",
+async def cancel_order(orderId):
+    r = requests.put(f"http://order-service:8080/{orderId}",
                      json={
-                         "status": "failure"
+                         "status": "CANCELLED"
                      }
                      )
-
+    if r.status_code >= 400 or r.status_code >= 500:
+        raise Exception(f"Order service failed: {r.status_code} {r.text}")
+    return r.json()
 @activity.defn
 async def update_order_status(orderId):
-    r = requests.put(f"http://order-service:8080/orders/{orderId}",
+    r = requests.put(f"http://order-service:8080/{orderId}",
         json={
-            "status": "success"
+            "status": "PAID"
         }
     )
+    if r.status_code >= 400 or r.status_code >= 500:
+        raise Exception(f"Order service failed: {r.status_code} {r.text}")
+    return r.json()

@@ -1,6 +1,9 @@
+from email.feedparser import NeedMoreData
+
 from temporalio import workflow
 from datetime import timedelta
 from temporalio.common import RetryPolicy
+import uuid
 
 with workflow.unsafe.imports_passed_through():
     from activities.get_listing_price import purchase_listing, reset_listing
@@ -12,11 +15,16 @@ retry_policy = RetryPolicy(
     initial_interval=timedelta(seconds=2),
     maximum_attempts=5,
 )
+sample_order_ref = str(workflow.uuid4())
 
 @workflow.defn
 class PurchaseWorkflow:
     @workflow.run
     async def run(self, data):
+        compensations = []
+        order_ref = str(workflow.uuid4())
+        order_id = None
+
         listing_deducted = False
         points_used = False
         order_id = None
@@ -24,10 +32,20 @@ class PurchaseWorkflow:
             ## Listing here will lower the numbers.
             listing = await workflow.execute_activity(
                 purchase_listing,
-                {"listing_id": data['listing_id']},
+                {"listing_id": data['listing_id'],
+                 "qty" : data['quantity']
+                 },
                 start_to_close_timeout=timedelta(seconds=10),
                 retry_policy=retry_policy
             )
+            #Making crash safe
+            compensations.append(
+                ("reset_listing", {
+                    "listing_id": data["listing_id"],
+                    "qty": data["quantity"]
+                })
+            )
+
             listing_deducted = True
             price = listing["unitPriceCents"] # Price from the listing.
 
@@ -35,6 +53,7 @@ class PurchaseWorkflow:
             #remaining = total - data['points'] # Remaining from total - the point. If remaining < 0, we just call the order. If
             points_to_use = min(data["points"], total)
             remaining = total - points_to_use
+            print(remaining, flush=True)
             #more, then need to call checkout url.
 
             point = None
@@ -46,10 +65,19 @@ class PurchaseWorkflow:
                         "user_id": data['user_id'],
                         "points_changed": points_to_use, #Call endpoint to get user points on frontend.
                         "transaction_type" : "SPEND",
-                        "reference_id" : "" # Might want to bring the order creation flow on top first.
+                        "reference_id" : sample_order_ref # Might want to bring the order creation flow on top first.
                     },
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
+                )
+                ## Crash safe
+                compensations.append(
+                    ("refund_points", {
+                        "user_id": data["user_id"],
+                        "points_changed": points_to_use,
+                        "transaction_type": "REFUND",
+                        "reference_id": order_ref
+                    })
                 )
                 points_used = True
             ##If the remaining is less than 0, we instantly submit the order, else we need to return the checkout url.
@@ -59,13 +87,15 @@ class PurchaseWorkflow:
 
             if(point!= None):
                 point_id = point['id']
-
+            enum_for_order = "PAID"
+            if(remaining > 0):
+                enum_for_order = "PENDING"
             order = await workflow.execute_activity(
                 create_order,
                 {
                     "user_id" : data['user_id'],
                     "listing_id": data['listing_id'],
-                    "status" : "created",
+                    "status" : enum_for_order,
                     "total_paid" : total,
                     "point_id" : point_id,
                     "payment_id" : "Empty",
@@ -74,7 +104,14 @@ class PurchaseWorkflow:
                 start_to_close_timeout=timedelta(seconds=10),
                 retry_policy=retry_policy
             )
-            order_id = order["order_id"]
+            print(order_id)
+            order_id = order["id"]
+            ##Crash safe
+            compensations.append(
+                ("cancel_order", {"order_id": order_id})
+            )
+
+
             payment_id = None
             ## If points is not enough, means we pay more.
             ## You might need more details for the charge payment.
@@ -84,7 +121,7 @@ class PurchaseWorkflow:
                     {
                         ## For stripe stuff.
                         "user_id": data['user_id'],
-                        "price": remaining,
+                        "price": remaining * 100,
                         ## Code here is for listing compensation.
                         "listing_id" : data['listing_id'],
                         "quantityToUpdate" : data['quantity'], #For listing service to add back
@@ -92,7 +129,7 @@ class PurchaseWorkflow:
                         #Serves as reference ID
                         "orderId" : order_id,
                         ## This code below is for Point compensation.
-                        "points_changed": data['points'],
+                        "points_changed": points_to_use,
                     },
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
@@ -108,32 +145,29 @@ class PurchaseWorkflow:
                 return {"status": "order created, point fully paid"}
 
         except Exception as e:
-            workflow.logger.error("Workflow failed, starting compensations")
-            if order_id:
-                await workflow.execute_activity(
-                    cancel_order,
-                    {
-                        "order_id": order_id
-                    },
-                    start_to_close_timeout=timedelta(seconds=10)
-                )
+            workflow.logger.error("Workflow failed, running compensations")
 
-            if points_used:
-                await workflow.execute_activity(
-                    refund_points,
-                    {
-                        "user_id": data['user_id'],
-                        "points_changed": data['points'],
-                        "transaction_type" : "REFUND",
-                        "reference_id" : order_id # Might want to bring the order creation flow on top first.
-                    },
-                    start_to_close_timeout=timedelta(seconds=10)
-                )
-            ## Must check is it DB add or what
-            if listing_deducted:
-                await workflow.execute_activity(
-                    reset_listing,
-                    {"listing_id": data['listing_id'], "qty": data['quantity']},
-                    start_to_close_timeout=timedelta(seconds=10)
-                )
+            for action, payload in reversed(compensations):
+                ## Must check over here.
+                if action == "cancel_order":
+                    await workflow.execute_activity(
+                        cancel_order,
+                        payload,
+                        start_to_close_timeout=timedelta(seconds=10)
+                    )
+
+                elif action == "refund_points":
+                    await workflow.execute_activity(
+                        refund_points,
+                        payload,
+                        start_to_close_timeout=timedelta(seconds=10)
+                    )
+
+                elif action == "reset_listing":
+                    await workflow.execute_activity(
+                        reset_listing,
+                        payload,
+                        start_to_close_timeout=timedelta(seconds=10)
+                    )
+
             raise

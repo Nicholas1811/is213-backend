@@ -2,10 +2,10 @@ import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
 from workflows.purchase_workflow import PurchaseWorkflow
-from activities.get_listing_price import purchase_listing
-from activities.point_activity import use_points
+from activities.get_listing_price import purchase_listing, reset_listing
+from activities.point_activity import use_points, refund_points
 from activities.payment_activity import charge_payment
-from activities.order_creation import create_order
+from activities.order_creation import create_order, cancel_order, update_order_status
 
 
 #In this method, we define a worker, in which it needs a workflow and the acitvities to pump the activities into the workflow.
@@ -29,7 +29,11 @@ async def main():
         workflows=[PurchaseWorkflow],
         activities=[
             purchase_listing,
+            reset_listing,
             use_points,
+            cancel_order,
+            refund_points,
+            update_order_status,
             charge_payment,
             create_order,
         ],
