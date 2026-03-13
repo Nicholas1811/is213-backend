@@ -23,10 +23,12 @@ async def create_order(data):
     return r.json()
 
 @activity.defn
-async def cancel_order(data):
-    r = requests.put("http://order-service:8080/orders/cancel",
-                    )
-    return r
+async def update_order_status(orderId):
+    r = requests.put(f"http://order-service:8080/orders/{orderId}",
+                     json={
+                         "status": "failure"
+                     }
+                     )
 
 @activity.defn
 async def update_order_status(orderId):
