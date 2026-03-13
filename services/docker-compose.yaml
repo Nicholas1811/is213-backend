@@ -95,23 +95,23 @@ services:
       context: ./points-service
       dockerfile: Dockerfile
     container_name: point-service
-    #    env_file:
-    #      - ./point-service/.env
+    env_file:
+      - ./points-service/.env
     expose:
       - "8080"
     networks:
       - temporal-network
       - default
 
-#  ai-service:
-#    build:
-#      context: ./ai-service
-#      dockerfile: Dockerfile
-#    container_name: ai-service
-##    env_file:
-##      - ./ai-service/.env
-#    expose:
-#      - "8080"
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: ai-service
+#    env_file:
+#      - ./ai-service/.env
+    expose:
+      - "8080"
 
   purchase-product-service:
     build:

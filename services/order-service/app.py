@@ -158,6 +158,7 @@ def create_order() -> tuple[dict[str, Any], int]:
 		)
 
 		with _db_engine().begin() as connection:
+			print("Success case.")
 			row = connection.execute(query, normalized).mappings().one()
 			return _serialize_row(dict(row)), 201
 	except ValueError as error:

@@ -18,7 +18,7 @@ stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 
 # stuff to pass in to payment processing
 class CheckoutRequest(BaseModel):
-    user_id: int
+    user_id: str
     price: int
     qty: int
 
