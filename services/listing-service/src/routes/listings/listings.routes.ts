@@ -1,16 +1,24 @@
-import { createRoute, z } from "@hono/zod-openapi";
+import { createRoute } from "@hono/zod-openapi";
 import * as HttpStatusCodes from "stoker/http-status-codes";
 import { jsonContent, jsonContentOneOf, jsonContentRequired } from "stoker/openapi/helpers";
 import { createErrorSchema, IdParamsSchema } from "stoker/openapi/schemas";
-import { insertListingsSchema, listingStatusEnum, patchListingsSchema, purchaseListingsSchema, selectListingsSchema } from "@/db/schema";
+import { selectListingsSchema } from "@/db/schema";
 import { conflictSchema, notFoundSchema } from "@/lib/constants";
+import {
+  completeUploadsRequestSchema,
+  completeUploadsResponseSchema,
+  insertListingBodySchema,
+  listListingsQuerySchema,
+  listListingsResponseSchema,
+  patchListingBodySchema,
+  purchaseListingBodySchema,
+  uploadUrlRequestSchema,
+  uploadUrlResponseSchema,
+  uploadUrlsRequestSchema,
+  uploadUrlsResponseSchema,
+} from "./listings.schemas";
 
 const tags = ["Listings"];
-
-// Query schema for list listings
-export const listListingsQuerySchema = z.object({
-  status: z.enum(listingStatusEnum.enumValues).optional(),
-});
 
 export const list = createRoute({
   path: "/listings",
@@ -21,11 +29,77 @@ export const list = createRoute({
   },
   responses: {
     [HttpStatusCodes.OK]: jsonContent(
-      z.array(selectListingsSchema),
+      listListingsResponseSchema,
       "The list of (filtered) listings",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(insertListingsSchema),
+      createErrorSchema(listListingsQuerySchema),
+      "Validation error(s)",
+    ),
+  },
+});
+
+export const uploadUrl = createRoute({
+  path: "/listings/upload-url",
+  method: "post",
+  request: {
+    body: jsonContentRequired(
+      uploadUrlRequestSchema,
+      "Filename and content type to generate a pre-signed upload URL",
+    ),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      uploadUrlResponseSchema,
+      "A pre-signed upload URL and final public URL",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(uploadUrlRequestSchema),
+      "Validation error(s)",
+    ),
+  },
+});
+
+export const uploadUrls = createRoute({
+  path: "/listings/upload-urls",
+  method: "post",
+  request: {
+    body: jsonContentRequired(
+      uploadUrlsRequestSchema,
+      "Multiple listing upload intents",
+    ),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      uploadUrlsResponseSchema,
+      "Created listings with pre-signed upload URLs",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(uploadUrlsRequestSchema),
+      "Validation error(s)",
+    ),
+  },
+});
+
+export const completeUploads = createRoute({
+  path: "/listings/uploads/complete",
+  method: "post",
+  request: {
+    body: jsonContentRequired(
+      completeUploadsRequestSchema,
+      "Confirm completed S3 uploads and publish listing.uploaded events",
+    ),
+  },
+  tags,
+  responses: {
+    [HttpStatusCodes.OK]: jsonContent(
+      completeUploadsResponseSchema,
+      "Batch publish outcome for listing.uploaded events",
+    ),
+    [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
+      createErrorSchema(completeUploadsRequestSchema),
       "Validation error(s)",
     ),
   },
@@ -36,7 +110,7 @@ export const create = createRoute({
   method: "post",
   request: {
     body: jsonContentRequired(
-      insertListingsSchema,
+      insertListingBodySchema,
       "The listing to create",
     ),
   },
@@ -47,7 +121,7 @@ export const create = createRoute({
       "The created listing",
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContent(
-      createErrorSchema(insertListingsSchema),
+      createErrorSchema(insertListingBodySchema),
       "Validation error(s)",
     ),
   },
@@ -82,7 +156,7 @@ export const patch = createRoute({
   request: {
     params: IdParamsSchema,
     body: jsonContentRequired(
-      patchListingsSchema,
+      patchListingBodySchema,
       "The listing updates",
     ),
   },
@@ -98,7 +172,7 @@ export const patch = createRoute({
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContentOneOf(
       [
-        createErrorSchema(patchListingsSchema),
+        createErrorSchema(patchListingBodySchema),
         createErrorSchema(IdParamsSchema),
       ],
       "Validation error(s)",
@@ -134,7 +208,7 @@ export const purchase = createRoute({
   request: {
     params: IdParamsSchema,
     body: jsonContentRequired(
-      purchaseListingsSchema,
+      purchaseListingBodySchema,
       "The quantity to buy",
     ),
   },
@@ -154,7 +228,7 @@ export const purchase = createRoute({
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContentOneOf(
       [
-        createErrorSchema(purchaseListingsSchema),
+        createErrorSchema(purchaseListingBodySchema),
         createErrorSchema(IdParamsSchema),
       ],
       "Validation error(s)",
@@ -168,7 +242,7 @@ export const restock = createRoute({
   request: {
     params: IdParamsSchema,
     body: jsonContentRequired(
-      purchaseListingsSchema,
+      purchaseListingBodySchema,
       "The quantity to restock",
     ),
   },
@@ -188,7 +262,7 @@ export const restock = createRoute({
     ),
     [HttpStatusCodes.UNPROCESSABLE_ENTITY]: jsonContentOneOf(
       [
-        createErrorSchema(purchaseListingsSchema),
+        createErrorSchema(purchaseListingBodySchema),
         createErrorSchema(IdParamsSchema),
       ],
       "Validation error(s)",
@@ -220,6 +294,9 @@ export const cancel = createRoute({
 });
 
 export type ListRoute = typeof list;
+export type UploadUrlRoute = typeof uploadUrl;
+export type UploadUrlsRoute = typeof uploadUrls;
+export type CompleteUploadsRoute = typeof completeUploads;
 export type CreateRoute = typeof create;
 export type GetOneRoute = typeof getOne;
 export type PatchRoute = typeof patch;
