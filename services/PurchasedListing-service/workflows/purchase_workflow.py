@@ -53,6 +53,8 @@ class PurchaseWorkflow:
             #remaining = total - data['points'] # Remaining from total - the point. If remaining < 0, we just call the order. If
             points_to_use = min(data["points"], total)
             remaining = total - points_to_use
+            if(0 < remaining < 50):
+                raise Exception("Remaining amount must be either 0 or at least 50 cents to proceed with payment.")
             print(remaining, flush=True)
             #more, then need to call checkout url.
 
