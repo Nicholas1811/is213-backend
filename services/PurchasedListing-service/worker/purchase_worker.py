@@ -21,8 +21,7 @@ async def connect_temporal():
 
 
 async def main():
-    client = await connect_temporal()
-
+    client = await Client.connect("temporal:7233")
     worker = Worker(
         client,
         task_queue="purchase-task-queue",

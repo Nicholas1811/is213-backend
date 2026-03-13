@@ -95,8 +95,8 @@ services:
       context: ./points-service
       dockerfile: Dockerfile
     container_name: point-service
-    env_file:
-      - ./points-service/.env
+#    env_file:
+#      - ./point-service/.env
     expose:
       - "8080"
     networks:
@@ -108,8 +108,8 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: ai-service
-    #    env_file:
-    #      - ./ai-service/.env
+#    env_file:
+#      - ./ai-service/.env
     expose:
       - "8080"
 
@@ -118,14 +118,12 @@ services:
       context: ./PurchasedListing-service
       dockerfile: Dockerfile
     container_name: purchase-product-service
-    command: python controller/purchase_listing_controller.py
-    #    env_file:
-    #      - ./PurchasedListing-service/.env
+#    env_file:
+#      - ./PurchasedListing-service/.env
     expose:
       - "8080"
     networks:
       - temporal-network
-      - default
 
   #  refund-service:
   #    build:
@@ -141,12 +139,12 @@ services:
     build:
       context: ./PurchasedListing-service
       dockerfile: Dockerfile
-    container_name: purchase-worker
-    command: python -m worker.purchase_worker
-    depends_on:
-      - temporal
-    networks:
-      - temporal-network
+    container_name: refund-service
+#    env_file:
+#      - ./Refund-service/.env
+    expose:
+      - "8080"
+
   ## == Rabbit MQ ==
   rabbitmq:
     image: rabbitmq:3-management
@@ -188,7 +186,7 @@ services:
     ports:
       - 7233:7233
     volumes:
-      - ./PurchasedListing-service/dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
   temporal-admin-tools:
     container_name: temporal-admin-tools
     depends_on:
@@ -214,7 +212,7 @@ services:
     ports:
       - 8090:8080 # use 8090 to avoid conflict with other services
 
-  ## == KONG API GATEWAY ==
+## == KONG API GATEWAY ==
   kong:
       image: kong:latest # Kong Gateway image (default to latest version)
       container_name: kong-api-gateway

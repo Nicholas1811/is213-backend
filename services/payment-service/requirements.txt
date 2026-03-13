@@ -6,3 +6,6 @@ dotenv
 requests
 stripe
 python-dotenv
+uvicorn
+sqlalchemy
+psycopg2-binary
