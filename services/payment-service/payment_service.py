@@ -42,7 +42,7 @@ async def process_payment(checkout_request: CheckoutRequest):
             success_url="https://localhost:8000/payment/payment-success",
             cancel_url="https://localhost:8000/payment/payment-failed",
         )
-        return {"checkout_url": checkout_session.url}
+        return {"checkout_url": checkout_session.url, "checkout_id" : checkout_session.id}
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

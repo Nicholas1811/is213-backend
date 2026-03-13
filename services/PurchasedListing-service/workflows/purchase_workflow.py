@@ -29,20 +29,22 @@ class PurchaseWorkflow:
                 retry_policy=retry_policy
             )
             listing_deducted = True
-            ## Calculate the points used, and minus together.
-            price = listing["unitPriceCents"]
-            total = price * data['quantity']
-            remaining = total - data['points'] ##points from the UI side.
+            price = listing["unitPriceCents"] # Price from the listing.
 
-            ## If no points, then we dont use this, if user points is more than zero, we use points.
+            total = price * data['quantity'] # Total of quantity from user and the price.
+            #remaining = total - data['points'] # Remaining from total - the point. If remaining < 0, we just call the order. If
+            points_to_use = min(data["points"], total)
+            remaining = total - points_to_use
+            #more, then need to call checkout url.
+
             point = None
-            if data['points'] > 0:
+            if points_to_use > 0: #If using points
                 ## Use points, a POST to the DB which says SPEND. You spend whatever that is lower, either ALL your points, or the total price.
                 point = await workflow.execute_activity(
                     use_points,
                     {
                         "user_id": data['user_id'],
-                        "points_changed": data['points'],
+                        "points_changed": points_to_use, #Call endpoint to get user points on frontend.
                         "transaction_type" : "SPEND",
                         "reference_id" : "" # Might want to bring the order creation flow on top first.
                     },
@@ -50,10 +52,11 @@ class PurchaseWorkflow:
                     retry_policy=retry_policy
                 )
                 points_used = True
-                    ##If the remaining is less than 0, we instantly submit the order, else we need to return the checkout url.
+            ##If the remaining is less than 0, we instantly submit the order, else we need to return the checkout url.
             ## We send the orderID.
             ## Order ID would need the point ID first, then send it over.
             point_id = ""
+
             if(point!= None):
                 point_id = point['id']
 
@@ -72,7 +75,7 @@ class PurchaseWorkflow:
                 retry_policy=retry_policy
             )
             order_id = order["order_id"]
-            payment_id = "None"
+            payment_id = None
             ## If points is not enough, means we pay more.
             ## You might need more details for the charge payment.
             if remaining > 0:
@@ -102,7 +105,7 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
-            return {"status": "order created, point fully paid"}
+                return {"status": "order created, point fully paid"}
 
         except Exception as e:
             workflow.logger.error("Workflow failed, starting compensations")
