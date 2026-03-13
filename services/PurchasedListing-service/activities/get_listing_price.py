@@ -1,3 +1,4 @@
+from email.policy import default
 from inspect import EndOfBlock
 
 from temporalio import activity
@@ -7,16 +8,23 @@ import requests
 #This is step 1, we will get the price (price x quantity) needed.
 
 @activity.defn
-async def get_listing_price(listing_id: int):
-    #For this endpoint, we will need to also check for availble quantity.
-    #If is too low, then that method will raise exception.
-    r = requests.get(
-        f"http://listing-service:8080/listings/{listing_id}"
+async def purchase_listing(data):
+    listing_id = data['listing_id']
+    data = requests.get(
+        f"http://host.docker.internal:9999/listings/{listing_id}/purchase",
+        json={
+            "qty" : data['qty']
+        }
     )
+    print("Data is" , data.json())
+    return data.json()
 
-    data = r.json()
-
-    return {
-        "price": data["price"],
-        "available": data["available"]
-    }
+@activity.defn
+async def reset_listing(data):
+    listing_id = data['listing_id']
+    requests.post(
+        f"http://host.docker.internal:9999/listings/{listing_id}/restock",
+        json={
+            "qty" : data['qty']
+        }
+    )

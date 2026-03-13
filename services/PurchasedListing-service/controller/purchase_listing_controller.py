@@ -23,30 +23,37 @@ async def connect_temporal():
 
 asyncio.run(connect_temporal())
 # Start purchase workflow
+## If point is 0, we do not call the use points activity.
+## If points is more than zero (from frontend, we call ground truth), we just add this in.
 @app.route("/purchase", methods=["POST"])
 def purchase_listing():
+
     data = request.json
 
     listing_id = data.get("listing_id")
-    buyer_id = data.get("buyer_id")
+    user_id = data.get("user_id")
+    quantity = data.get("quantity", 1)
+    points = data.get("points", 0)
 
     workflow_id = f"purchase-{listing_id}"
 
     async def start_workflow():
-        await temporal_client.start_workflow(
-            "purchase-workflow",
-            {"listing_id": listing_id, "buyer_id": buyer_id},
+        result = await temporal_client.execute_workflow(
+            "PurchaseWorkflow",
+            {
+                "user_id": user_id,
+                "listing_id": listing_id,
+                "quantity": quantity,
+                "points": points
+            },
             id=workflow_id,
             task_queue="purchase-task-queue",
         )
+        return result
 
-    asyncio.run(start_workflow())
+    result = asyncio.run(start_workflow())
 
-    ## Return the checkout url here
-    return jsonify({
-        "message": "Purchase workflow started",
-        "workflow_id": workflow_id
-    })
+    return jsonify(result)
 
 ## Endpoint secret by stripe.
 

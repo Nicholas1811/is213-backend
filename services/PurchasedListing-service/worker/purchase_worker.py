@@ -2,7 +2,7 @@ import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
 from workflows.purchase_workflow import PurchaseWorkflow
-from activities.get_listing_price import get_listing_price
+from activities.get_listing_price import purchase_listing
 from activities.point_activity import use_points
 from activities.payment_activity import charge_payment
 from activities.order_creation import create_order
@@ -28,7 +28,7 @@ async def main():
         task_queue="purchase-task-queue",
         workflows=[PurchaseWorkflow],
         activities=[
-            get_listing_price,
+            purchase_listing,
             use_points,
             charge_payment,
             create_order,

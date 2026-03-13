@@ -14,12 +14,3 @@ async def charge_payment(user_id: int, amount: float):
     )
 
     return r.json()
-
-## Calls refund.
-@activity.defn
-async def refund_payment(payment_id: str):
-
-    requests.post(
-        "http://payment-service:8080/refund",
-        json={"paymentId": payment_id}
-    )

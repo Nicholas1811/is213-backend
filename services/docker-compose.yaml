@@ -60,6 +60,9 @@ services:
       - ./payment-service/.env
     expose:
       - "8080"
+    networks:
+      - temporal-network
+      - default
 
   listing-service:
     build:
@@ -70,6 +73,9 @@ services:
       - ./listing-service/.env
     expose:
       - "8080"
+    networks:
+      - temporal-network
+      - default
 
   order-service:
     build:
@@ -80,6 +86,9 @@ services:
       - ./order-service/.env
     expose:
       - "8080"
+    networks:
+        - temporal-network
+        - default
 
   point-service:
     build:
@@ -90,6 +99,9 @@ services:
     #      - ./point-service/.env
     expose:
       - "8080"
+    networks:
+      - temporal-network
+      - default
 
 #  ai-service:
 #    build:

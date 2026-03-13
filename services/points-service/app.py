@@ -26,7 +26,7 @@ def get_user_points(user_id):
     
     if not record:
         return jsonify({"status": "error","message": f"No point record found for User ID: {user_id}"}), 404
-        
+
     return jsonify({
         "user_id": str(record.user_id),
         "balance": record.current_balance,
@@ -95,4 +95,4 @@ def create_transaction():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=8080, debug=True)

@@ -5,11 +5,9 @@ from temporalio import activity
 # I need the orderId, userId as well, and the eventType.
 @activity.defn
 async def publish_purchase_event(order_id):
-
     connection = pika.BlockingConnection(
         pika.ConnectionParameters("rabbitmq")
     )
-
     channel = connection.channel()
 
     channel.basic_publish(
