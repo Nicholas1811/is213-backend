@@ -21,7 +21,7 @@ services:
   keycloak-esd:
     build:
       context: .
-      dockerfile: keycloak-esd/Dockerfile
+      dockerfile: keycloak-user-sync-listener/Dockerfile
     env_file:
       - ./user-service/.env
     command:
@@ -87,8 +87,8 @@ services:
     expose:
       - "8080"
     networks:
-        - temporal-network
-        - default
+      - temporal-network
+      - default
 
   point-service:
     build:
@@ -108,8 +108,8 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: ai-service
-#    env_file:
-#      - ./ai-service/.env
+    #    env_file:
+    #      - ./ai-service/.env
     expose:
       - "8080"
 
@@ -127,15 +127,15 @@ services:
       - temporal-network
       - default
 
-#  refund-service:
-#    build:
-#      context: ./Refund-service
-#      dockerfile: Dockerfile
-#    container_name: refund-service
-##    env_file:
-##      - ./Refund-service/.env
-#    expose:
-#      - "8080"
+  #  refund-service:
+  #    build:
+  #      context: ./Refund-service
+  #      dockerfile: Dockerfile
+  #    container_name: refund-service
+  ##    env_file:
+  ##      - ./Refund-service/.env
+  #    expose:
+  #      - "8080"
 
   purchase-worker:
     build:
