@@ -26,8 +26,8 @@ async def create_order(data):
     return r.json()
 
 @activity.defn
-async def cancel_order(orderId):
-    r = requests.put(f"http://order-service:8080/{orderId}",
+async def cancel_order(data):
+    r = requests.put(f"http://order-service:8080/{data['order_id']}",
                      json={
                          "status": "CANCELLED"
                      }
@@ -36,8 +36,8 @@ async def cancel_order(orderId):
         raise Exception(f"Order service failed: {r.status_code} {r.text}")
     return r.json()
 @activity.defn
-async def update_order_status(orderId):
-    r = requests.put(f"http://order-service:8080/{orderId}",
+async def update_order_status(data):
+    r = requests.put(f"http://order-service:8080/{data['order_id']}",
         json={
             "status": "PAID"
         }

@@ -121,7 +121,7 @@ class PurchaseWorkflow:
                     {
                         ## For stripe stuff.
                         "user_id": data['user_id'],
-                        "price": remaining * 100,
+                        "price": remaining,
                         ## Code here is for listing compensation.
                         "listing_id" : data['listing_id'],
                         "quantityToUpdate" : data['quantity'], #For listing service to add back
