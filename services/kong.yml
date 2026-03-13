@@ -34,6 +34,13 @@ services:
         config:
           minute: 100
           policy: local
+      - name: proxy-cache
+        config:
+          request_method:
+            - GET
+          content_type:
+            - application/json
+          cache_ttl: 60
 
   - name: order-service
     url: http://order-service:8080
