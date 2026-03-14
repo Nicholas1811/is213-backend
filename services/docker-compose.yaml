@@ -56,8 +56,6 @@ services:
       context: ./payment-service
       dockerfile: Dockerfile
     container_name: payment-service
-
-    build: ./payment-service
     env_file:
       - ./payment-service/.env
     expose:
