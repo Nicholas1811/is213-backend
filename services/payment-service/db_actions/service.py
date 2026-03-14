@@ -1,12 +1,11 @@
 from sqlalchemy.orm import Session
 from .model import Payment
 
-def create_payment(db: Session, payment_id: str, listing_id: int, user_id: str, quantity: float, payment_created):
-    db_payment = Payment(payment_id=payment_id, listing_id=listing_id, user_id=user_id, quantity=quantity, payment_created=payment_created)
-    db.add(db_payment)
+def create_payment(db: Session, payment_data: Payment):
+    db.add(payment_data)
     db.commit()
-    db.refresh(db_payment)
-    return db_payment
+    db.refresh(payment_data)
+    return payment_data
 
-def get_payment_by_id(db: Session, payment_id: str):
-    return db.query(Payment).filter(Payment.payment_id == payment_id).first()
+def get_payment_by_id(db: Session, payment_stripe_id: str):
+    return db.query(Payment).filter(Payment.payment_stripe_id == payment_stripe_id).first()

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 import stripe
 from pydantic import BaseModel, field_validator
 import os
@@ -6,10 +6,12 @@ from sqlalchemy.orm import Session
 from db_actions.model import Payment
 from db_actions.service import create_payment, get_payment_by_id
 from db_actions.db import SessionLocal, engine, Base
+from datetime import datetime
 
 app = FastAPI()
-router = APIRouter(prefix="/payment")
+router = APIRouter()
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+stripe.webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
 # set up db
 Base.metadata.create_all(bind=engine)
@@ -21,45 +23,27 @@ def get_db():
     finally:
         db.close()
 
-
-# stuff to pass in to payment processing
+# stuff to pass in to payment processing - to check with db
 class CheckoutRequest(BaseModel):
     user_id: str
     price: int
-    qty: int
-
-    # to check with db side if exists (placeholder)
-    @field_validator('user_id')
-    def checkUserId(cls, v):
-        if v <= 0:
-            raise ValueError("User ID must be a positive integer")
-        return v
-
-    @field_validator('price')
-    def checkPrice(cls, v):
-        if v <= 0:
-            raise ValueError("Price must be a positive integer")
-        return v
-
-    @field_validator('qty')
-    def checkQty(cls, v):
-        if v <= 0:
-            raise ValueError("Quantity must be a positive integer")
-        return v
+    listing_id: int
+    order_id: int
+    quantity_to_update: int
+    points_changed: int
 
 class RefundRequest(BaseModel):
-    payment_id: str
-    amount: int
+    payment_intent_id: str
 
     #check with db - to be implemented
-    @field_validator('payment_id')
+    @field_validator('payment_intent_id')
     def checkPaymentId(cls, v):
         if not v:
-            raise ValueError("Payment ID must be provided")
+            raise ValueError("Payment Intent ID must be provided")
         return v
 
 @router.post("/process-payment")
-async def process_payment(checkout_request: CheckoutRequest, db: Session = Depends(get_db)):
+async def process_payment(checkout_request: CheckoutRequest):
     try:
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=["card"],
@@ -71,23 +55,71 @@ async def process_payment(checkout_request: CheckoutRequest, db: Session = Depen
                     },
                     "unit_amount": checkout_request.price,
                 },
-                "quantity": checkout_request.qty,
+                "quantity": checkout_request.quantity_to_update,
             }],
             mode="payment",
-            success_url="https://localhost:8000/payment/payment-success",
-            cancel_url="https://localhost:8000/payment/payment-failed",
+            success_url="http://localhost:8000/payment/payment-success?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url="http://localhost:8000/payment/payment-failed",
+            metadata={
+                "user_id": checkout_request.user_id,
+                "listing_id": checkout_request.listing_id,
+                "quantity": checkout_request.quantity_to_update,
+            }
         )
-
         return {"checkout_url": checkout_session.url, "checkout_id" : checkout_session.id}
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@router.post("/webhook")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature')
+    try:
+        # Verify webhook signature. This ensures the call really comes from Stripe
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, stripe.webhook_secret
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        
+        payment_stripe_id = session.get("id")
+        payment_intent_id = session.get("payment_intent")
+        metadata = session.get("metadata", {})
+
+
+        print("------------------------------------------------")
+        print(f"SUCCESS! Payment Intent ID: {payment_intent_id}")
+        print("details below:")
+        print(stripe.PaymentIntent.retrieve(payment_intent_id))
+
+        new_payment = Payment(
+                payment_stripe_id=payment_stripe_id,
+                user_id=metadata.get("user_id"),
+                payment_intent_id=payment_intent_id,
+                listing_id=int(metadata.get("listing_id", 0)),
+                quantity=int(metadata.get("quantity", 0)),
+                payment_created=datetime.now(),
+                payment_updated=datetime.now()
+            )
+        
+        try:
+            create_payment(payment_data=new_payment, db=db)
+        except Exception as e:
+            print(e)
+
+    return {"status": "success"}
+
 
 @router.post("/refund")
 async def refund_payment(refund_request: RefundRequest):
     try:
         refund = stripe.Refund.create(
-            payment_intent=refund_request.payment_id,
-            amount=refund_request.amount,
+            payment_intent=refund_request.payment_intent_id
         )
         return {"refund_id": refund.id, "status": refund.status}
     except Exception as e:
@@ -99,9 +131,9 @@ async def testRoute():
     return {"message": "testing payment"}
 
 @router.get('/payment-success')
-async def payment_success():
+async def payment_success(session_id: str):
     try:
-        session = stripe.checkout.Session.retrieve()
+        session = stripe.checkout.Session.retrieve(session_id)
         if session.payment_status == "paid":
             return {"message": "Payment successful!"}
     except Exception:
