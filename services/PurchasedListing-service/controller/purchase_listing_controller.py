@@ -55,35 +55,6 @@ def purchase_listing():
 
     return jsonify(result)
 
-## Endpoint secret by stripe.
-
-endpoint_secret = "xyz"
-@app.route("/webhook/payment", methods=["POST"])
-def confirmWebhook():
-    payload = request.data
-    sig_header = request.headers.get("Stripe-Signature")
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            endpoint_secret
-        )
-    except stripe.error.SignatureVerificationError:
-        return jsonify({"error": "Invalid signature"}), 400
-    # Handle event
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        workflow_id = session["metadata"].get("workflow_id")
-        print("Payment completed for workflow:", workflow_id)
-        ## Call order service to update over here.
-        # Here you would signal your workflow / continue processing
-    else:
-        pass
-        #Failure events, so we call the compensation here, which is to
-        #1) Refund Points, Update Lising, Set Order to cancelled.
-
-    return jsonify({"status": "success"}), 200
-
 @app.route("/health", methods=["GET"])
 def health_check():
     return {"status":200, "message":"Healthy"}, 200
