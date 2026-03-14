@@ -17,3 +17,5 @@ async def charge_payment(data):
         raise Exception(f"Payment service failed: {r.status_code} {r.text}")
 
     return r.json()
+
+

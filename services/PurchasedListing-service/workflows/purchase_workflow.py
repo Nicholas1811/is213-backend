@@ -9,7 +9,7 @@ with workflow.unsafe.imports_passed_through():
     from activities.get_listing_price import purchase_listing, reset_listing
     from activities.point_activity import use_points, refund_points
     from activities.payment_activity import charge_payment #, refund_payment
-    from activities.order_creation import create_order, cancel_order, update_order_status
+    from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId
 
 retry_policy = RetryPolicy(
     initial_interval=timedelta(seconds=2),
@@ -92,6 +92,7 @@ class PurchaseWorkflow:
             enum_for_order = "PAID"
             if(remaining > 0):
                 enum_for_order = "PENDING"
+
             order = await workflow.execute_activity(
                 create_order,
                 {
@@ -106,14 +107,14 @@ class PurchaseWorkflow:
                 start_to_close_timeout=timedelta(seconds=10),
                 retry_policy=retry_policy
             )
+            ##TODO NIC: Update the point endpoint to have the referenceID usingthe orderID.
             print(order_id)
             order_id = order["id"]
+
             ##Crash safe
             compensations.append(
                 ("cancel_order", {"order_id": order_id})
             )
-
-
             payment_id = None
             ## If points is not enough, means we pay more.
             ## You might need more details for the charge payment.
@@ -136,6 +137,16 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
+                ##TODO NIC: Update the payment_id in order to have the paymentID.
+                ## UNTESTED CODE, PLEASE TEST THIS.
+                order_update = await workflow.execute_activity(
+                    update_order_paymentId,
+                    {
+                        "order_id": order_id,
+                        "payment_id": payment_id['checkout_id']
+                    },
+                    start_to_close_timeout=timedelta(seconds=10),
+                    retry_policy=retry_policy)
                 return payment_id
             else:
                 await workflow.execute_activity(
