@@ -62,8 +62,11 @@ async def process_payment(checkout_request: CheckoutRequest):
             cancel_url="http://localhost:8000/payment/payment-failed",
             metadata={
                 "user_id": checkout_request.user_id,
+                "price": checkout_request.price,
                 "listing_id": checkout_request.listing_id,
                 "quantity": checkout_request.quantity_to_update,
+                "points_changed": checkout_request.points_changed,
+                "order_id": checkout_request.order_id
             }
         )
         return {"checkout_url": checkout_session.url, "checkout_id" : checkout_session.id}
