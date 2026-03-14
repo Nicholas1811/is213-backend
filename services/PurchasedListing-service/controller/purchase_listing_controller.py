@@ -1,3 +1,5 @@
+import uuid
+
 from flask import Flask, request, jsonify
 import asyncio
 from temporalio.client import Client
@@ -35,7 +37,7 @@ def purchase_listing():
     quantity = data.get("quantity", 1)
     points = data.get("points", 0)
 
-    workflow_id = f"purchase-{listing_id}"
+    workflow_id = str(uuid.UUID)
 
     async def start_workflow():
         result = await temporal_client.execute_workflow(
