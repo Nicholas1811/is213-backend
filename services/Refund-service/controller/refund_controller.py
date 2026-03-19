@@ -1,0 +1,51 @@
+import asyncio
+import time
+from flask import Flask, jsonify, request
+from temporalio.client import Client
+
+app = Flask(__name__)
+temporal_client = None
+
+async def connect_temporal():
+    global temporal_client
+    while True:
+        try:
+            temporal_client = await Client.connect("temporal:7233")
+            print("Connected to Temporal")
+            break
+        except Exception as error:
+            print("Waiting for Temporal...", error)
+            time.sleep(3)
+
+asyncio.run(connect_temporal())
+
+@app.route("/refund/process", methods=["POST"])
+def process_refund():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return {"error": "Request body must be a JSON object"}, 400
+    required_fields = ["order_id", "user_id", "point_id", "points_amount", "payment_id", "refund_amount"]
+    missing = [field for field in required_fields if data.get(field) in (None, "")]
+    if missing:
+        return {"error": f"Missing required fields: {', '.join(missing)}"}, 400
+    workflow_id = f"refund-{data['order_id']}"
+    async def start_workflow():
+        return await temporal_client.execute_workflow(
+            "RefundWorkflow",
+            data,
+            id=workflow_id,
+            task_queue="refund-task-queue",
+        )
+    try:
+        result = asyncio.run(start_workflow())
+        status_code = 200 if result.get("status") == "COMPLETED" else 500
+        return jsonify(result), status_code
+    except Exception as error:
+        return {"error": str(error)}, 500
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    return {"status": 200, "message": "Healthy"}, 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
