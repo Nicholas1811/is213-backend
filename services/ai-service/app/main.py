@@ -24,6 +24,7 @@ app = FastAPI(lifespan=lifespan)
 async def home():
     return "gay"
 
+# Publish health check
 @app.post("/publish")
 async def publish_message(message: str) -> dict:
     await app.state.channel.default_exchange.publish(
@@ -32,6 +33,7 @@ async def publish_message(message: str) -> dict:
     )
     return {"status": "ok"}
 
+# Publish health check
 @app.get("/consume")
 async def consume_message() -> dict:
     queue = await app.state.channel.declare_queue(
