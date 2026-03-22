@@ -14,6 +14,7 @@ RABBITMQ_QUEUE = environ.get("RABBITMQ_QUEUE", "dev.listings.events")
 RABBITMQ_PREFETCH = int(environ.get("RABBITMQ_PREFETCH", "20"))
 AI_CONSUME_QUEUE = environ.get("AI_CONSUME_QUEUE", "dev.ai.listing.uploaded")
 LISTING_UPLOADED_ROUTING_KEY = "listing.uploaded"
+LISTING_PROCESSED_ROUTING_KEY = "listing.processed"
 
 # AMQP Connection
 @asynccontextmanager
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     app.state.last_listing_uploaded: dict[str, Any] | None = None
+    app.state.last_listing_processed: dict[str, Any] | None = None
     await app.state.listing_uploaded_queue.consume(
         lambda message: handle_listing_uploaded(app, message),
     )
@@ -71,7 +73,28 @@ async def handle_listing_uploaded(
 
         # TODO: Use `image_url` from the incoming `listing.uploaded` message
         # to fetch the uploaded image from S3 and continue the AI processing flow.
-        print("Image consumed: " + image_url)
+        print(f"Image consumed: {image_url}")
+
+        # TODO: Replace placeholder values with the AI output.
+        processed_payload = build_default_listing_processed_message(
+            source_payload=payload,
+            ai_name="AI generated product name",
+            ai_description="AI generated product description",
+        )
+        await publish_listing_processed(app, processed_payload)
+
+
+async def publish_listing_processed(app: FastAPI, payload: dict[str, Any]) -> dict[str, Any]:
+    await app.state.exchange.publish(
+        aio_pika.Message(
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+        ),
+        routing_key=LISTING_PROCESSED_ROUTING_KEY,
+    )
+
+    app.state.last_listing_processed = payload
+    return payload
 
 app = FastAPI(lifespan=lifespan)
 
@@ -171,3 +194,34 @@ def build_default_listing_uploaded_message() -> dict[str, Any]:
 #   }
 # }
 
+# Use this for testing JSON body to publish to listing-service
+def build_default_listing_processed_message(
+    source_payload: dict[str, Any] | None = None,
+    ai_name: str = "AI generated product name",
+    ai_description: str = "AI generated product description",
+) -> dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    uploaded_payload = source_payload or build_default_listing_uploaded_message()
+    original_listing = uploaded_payload.get("data", {})
+
+    return {
+        "eventId": str(uuid4()),
+        "eventName": LISTING_PROCESSED_ROUTING_KEY,
+        "eventVersion": 1,
+        "occurredAt": now,
+        # Keep the current source shape compatible with listing-service's validator.
+        "source": uploaded_payload.get("source", "jms-productservice"),
+        "correlationId": uploaded_payload.get("correlationId") or uploaded_payload.get("eventId"),
+        "data": {
+            "id": original_listing.get("id", 123),
+            "s3ImageUrl": original_listing.get("s3ImageUrl", "LINK TO S3 TEST IMAGE URL"),
+            "name": ai_name,
+            "description": ai_description,
+            "qty": original_listing.get("qty", 10),
+            "unitPriceCents": original_listing.get("unitPriceCents", 2599),
+            "status": "processed",
+            "bestBefore": original_listing.get("bestBefore"),
+            "createdAt": original_listing.get("createdAt", now),
+            "updatedAt": now,
+        },
+    }
