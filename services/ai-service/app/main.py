@@ -1,16 +1,21 @@
-from fastapi import FastAPI
-
+from os import environ
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import aio_pika
+from dotenv import dotenv_values
+from fastapi import FastAPI
+
+RABBITMQ_URL = environ.get("RABBITMQ_URL", "amqp://localhost:5672")
+RABBITMQ_EXCHANGE = environ.get("RABBITMQ_EXCHANGE", "dev.events")
+RABBITMQ_QUEUE = environ.get("RABBITMQ_QUEUE", "dev.listings.events")
+RABBITMQ_PREFETCH = int(environ.get("RABBITMQ_PREFETCH", "20"))
 
 # AMQP Connection
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.connection = await aio_pika.connect_robust(
-        #"amqp://guest:guest@localhost/",
-        "amqp://localhost:5672",
+        RABBITMQ_URL,
     )
     app.state.channel = await app.state.connection.channel()
     try:
@@ -49,7 +54,12 @@ async def consume_message() -> dict:
     return {"body": None}
 
 # RabbitMQ JSON body contract
-#
+# Notes:
+# - `data` must be the full listing snapshot, not only `product_id` / `image_url`.
+# - AI should read the image from `data.s3ImageUrl`.
+# - The processed event should preserve the original listing fields and only update the
+#   AI-enriched fields such as `name`, `description`, `status`, and `updatedAt`.
+
 # Consume from `listing.uploaded`
 # {
 #   "eventId": "2d8d7d7c-2a2b-4c1b-a6d8-7d7f8d5f2e10",
@@ -71,7 +81,7 @@ async def consume_message() -> dict:
 #     "updatedAt": "2026-03-22T10:00:00.000Z"
 #   }
 # }
-#
+
 # Publish to `listing.processed`
 # {
 #   "eventId": "8e8d5c2d-6e67-4f0a-9c37-4b0c3e5f91aa",
@@ -93,9 +103,4 @@ async def consume_message() -> dict:
 #     "updatedAt": "2026-03-22T10:16:00.000Z"
 #   }
 # }
-#
-# Notes:
-# - `data` must be the full listing snapshot, not only `product_id` / `image_url`.
-# - AI should read the image from `data.s3ImageUrl`.
-# - The processed event should preserve the original listing fields and only update the
-#   AI-enriched fields such as `name`, `description`, `status`, and `updatedAt`.
+
