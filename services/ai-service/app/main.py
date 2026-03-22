@@ -8,6 +8,8 @@ from uuid import uuid4
 import aio_pika
 from fastapi import FastAPI
 
+# from app.gemini_process import generate_listing_details_from_image_url
+
 RABBITMQ_URL = environ.get("RABBITMQ_URL", "amqp://localhost:5672")
 RABBITMQ_EXCHANGE = environ.get("RABBITMQ_EXCHANGE", "dev.events")
 RABBITMQ_QUEUE = environ.get("RABBITMQ_QUEUE", "dev.listings.events")
@@ -63,23 +65,28 @@ async def handle_listing_uploaded(
         payload = json.loads(message.body.decode("utf-8"))
         listing = payload.get("data", {})
         image_url = listing.get("s3ImageUrl")
+        image_mime_type = listing.get("mimeType") or listing.get("contentType")
+        listing_id = listing.get("id")
 
         app.state.last_listing_uploaded = {
             "eventId": payload.get("eventId"),
             "eventName": payload.get("eventName"),
-            "listingId": listing.get("id"),
+            "listingId": listing_id,
             "imageUrl": image_url,
+            "mimeType": image_mime_type,
         }
 
-        # TODO: Use `image_url` from the incoming `listing.uploaded` message
-        # to fetch the uploaded image from S3 and continue the AI processing flow.
         print(f"Image consumed: {image_url}")
 
-        # TODO: Replace placeholder values with the AI output.
+        # ai_details = await generate_listing_details_from_image_url(
+        #     image_url,
+        #     mime_type=image_mime_type,
+        # )
+
         processed_payload = build_default_listing_processed_message(
-            source_payload=payload,
-            ai_name="AI generated product name",
-            ai_description="AI generated product description",
+            source_payload=payload
+            # ai_name=ai_details.name,
+            # ai_description=ai_details.description,
         )
         await publish_listing_processed(app, processed_payload)
 
