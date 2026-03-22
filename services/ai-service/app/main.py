@@ -1,15 +1,19 @@
+import json
 from os import environ
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from datetime import datetime, timezone
+from typing import Any, AsyncGenerator
+from uuid import uuid4
 
 import aio_pika
-from dotenv import dotenv_values
 from fastapi import FastAPI
 
 RABBITMQ_URL = environ.get("RABBITMQ_URL", "amqp://localhost:5672")
 RABBITMQ_EXCHANGE = environ.get("RABBITMQ_EXCHANGE", "dev.events")
 RABBITMQ_QUEUE = environ.get("RABBITMQ_QUEUE", "dev.listings.events")
 RABBITMQ_PREFETCH = int(environ.get("RABBITMQ_PREFETCH", "20"))
+AI_CONSUME_QUEUE = environ.get("AI_CONSUME_QUEUE", "dev.ai.listing.uploaded")
+LISTING_UPLOADED_ROUTING_KEY = "listing.uploaded"
 
 # AMQP Connection
 @asynccontextmanager
@@ -18,10 +22,56 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         RABBITMQ_URL,
     )
     app.state.channel = await app.state.connection.channel()
+    await app.state.channel.set_qos(prefetch_count=RABBITMQ_PREFETCH)
+
+    app.state.exchange = await app.state.channel.declare_exchange(
+        RABBITMQ_EXCHANGE,
+        aio_pika.ExchangeType.TOPIC,
+        durable=True,
+    )
+    app.state.listing_uploaded_queue = await app.state.channel.declare_queue(
+        AI_CONSUME_QUEUE,
+        durable=True,
+    )
+    await app.state.listing_uploaded_queue.bind(
+        app.state.exchange,
+        routing_key=LISTING_UPLOADED_ROUTING_KEY,
+    )
+
+    app.state.last_listing_uploaded: dict[str, Any] | None = None
+    await app.state.listing_uploaded_queue.consume(
+        lambda message: handle_listing_uploaded(app, message),
+    )
+
     try:
         yield
     finally:
         await app.state.connection.close()
+
+# On consuming listing.uploaded event
+# 1. Grab the payload data (imageURL)
+# 2. Sent to AI service for processing
+# 3. Populate new message with AI details as new message payload
+# 4. Publish message with new payload
+async def handle_listing_uploaded(
+    app: FastAPI,
+    message: aio_pika.abc.AbstractIncomingMessage,
+) -> None:
+    async with message.process(requeue=False):
+        payload = json.loads(message.body.decode("utf-8"))
+        listing = payload.get("data", {})
+        image_url = listing.get("s3ImageUrl")
+
+        app.state.last_listing_uploaded = {
+            "eventId": payload.get("eventId"),
+            "eventName": payload.get("eventName"),
+            "listingId": listing.get("id"),
+            "imageUrl": image_url,
+        }
+
+        # TODO: Use `image_url` from the incoming `listing.uploaded` message
+        # to fetch the uploaded image from S3 and continue the AI processing flow.
+        print("Image consumed: " + image_url)
 
 app = FastAPI(lifespan=lifespan)
 
@@ -31,27 +81,20 @@ async def home():
 
 # Publish health check
 @app.post("/publish")
-async def publish_message(message: str) -> dict:
+async def publish_message() -> dict:
+    payload = build_default_listing_uploaded_message()
     await app.state.channel.default_exchange.publish(
-        aio_pika.Message(body=message.encode()),
-        routing_key="test_queue",
+        aio_pika.Message(
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+        ),
+        routing_key=AI_CONSUME_QUEUE,
     )
-    return {"status": "ok"}
-
-# Consume health check
-@app.get("/consume")
-async def consume_message() -> dict:
-    queue = await app.state.channel.declare_queue(
-        "test_queue",
-        auto_delete=True,
-    )
-    message = await queue.get(timeout=5, fail=False)
-
-    if message:
-        await message.ack()
-        return {"body": message.body.decode()}
-
-    return {"body": None}
+    return {
+        "status": "ok",
+        "queue": AI_CONSUME_QUEUE,
+        "body": payload,
+    }
 
 # RabbitMQ JSON body contract
 # Notes:
@@ -81,6 +124,30 @@ async def consume_message() -> dict:
 #     "updatedAt": "2026-03-22T10:00:00.000Z"
 #   }
 # }
+
+# Use this for testing JSON body using /publish
+def build_default_listing_uploaded_message() -> dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return {
+        "eventId": str(uuid4()),
+        "eventName": LISTING_UPLOADED_ROUTING_KEY,
+        "eventVersion": 1,
+        "occurredAt": now,
+        "source": "jms-productservice",
+        "correlationId": "manual-test-publish",
+        "data": {
+            "id": 123,
+            "s3ImageUrl": "LINK TO S3 TEST IMAGE URL",
+            "name": None,
+            "description": None,
+            "qty": 10,
+            "unitPriceCents": 2599,
+            "status": "created",
+            "bestBefore": None,
+            "createdAt": now,
+            "updatedAt": now,
+        },
+    }
 
 # Publish to `listing.processed`
 # {
