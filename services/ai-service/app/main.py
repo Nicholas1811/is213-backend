@@ -47,3 +47,55 @@ async def consume_message() -> dict:
         return {"body": message.body.decode()}
 
     return {"body": None}
+
+# RabbitMQ JSON body contract
+#
+# Consume from `listing.uploaded`
+# {
+#   "eventId": "2d8d7d7c-2a2b-4c1b-a6d8-7d7f8d5f2e10",
+#   "eventName": "listing.uploaded",
+#   "eventVersion": 1,
+#   "occurredAt": "2026-03-22T10:15:30.000Z",
+#   "source": "jms-productservice",
+#   "correlationId": "optional-trace-id",
+#   "data": {
+#     "id": 123,
+#     "s3ImageUrl": "https://bucket.s3.ap-southeast-1.amazonaws.com/listings/item-123.jpg",
+#     "name": None,
+#     "description": None,
+#     "qty": 10,
+#     "unitPriceCents": 2599,
+#     "status": "created",
+#     "bestBefore": "2026-03-30T00:00:00.000Z",
+#     "createdAt": "2026-03-22T10:00:00.000Z",
+#     "updatedAt": "2026-03-22T10:00:00.000Z"
+#   }
+# }
+#
+# Publish to `listing.processed`
+# {
+#   "eventId": "8e8d5c2d-6e67-4f0a-9c37-4b0c3e5f91aa",
+#   "eventName": "listing.processed",
+#   "eventVersion": 1,
+#   "occurredAt": "2026-03-22T10:16:00.000Z",
+#   "source": "ai-service",
+#   "correlationId": "same incoming correlationId or the uploaded eventId",
+#   "data": {
+#     "id": 123,
+#     "s3ImageUrl": "https://bucket.s3.ap-southeast-1.amazonaws.com/listings/item-123.jpg",
+#     "name": "AI generated product name",
+#     "description": "AI generated product description",
+#     "qty": 10,
+#     "unitPriceCents": 2599,
+#     "status": "processed",
+#     "bestBefore": "2026-03-30T00:00:00.000Z",
+#     "createdAt": "2026-03-22T10:00:00.000Z",
+#     "updatedAt": "2026-03-22T10:16:00.000Z"
+#   }
+# }
+#
+# Notes:
+# - `data` must be the full listing snapshot, not only `product_id` / `image_url`.
+# - AI should read the image from `data.s3ImageUrl`.
+# - The processed event should preserve the original listing fields and only update the
+#   AI-enriched fields such as `name`, `description`, `status`, and `updatedAt`.
