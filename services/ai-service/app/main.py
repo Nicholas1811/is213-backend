@@ -38,7 +38,7 @@ async def publish_message(message: str) -> dict:
     )
     return {"status": "ok"}
 
-# Publish health check
+# Consume health check
 @app.get("/consume")
 async def consume_message() -> dict:
     queue = await app.state.channel.declare_queue(
