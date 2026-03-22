@@ -17,10 +17,10 @@ async def purchase_listing(data):
         }
     )
     print("Status code is" , r.status_code)
-    print("Data is" , data.json())
+    print("Data is" , r.json())
     if(r.status_code >= 400 or r.status_code >= 500):
         raise Exception("Failed to reserve listing")
-    return data.json()
+    return r.json()
 
 @activity.defn
 async def reset_listing(data):
@@ -33,4 +33,4 @@ async def reset_listing(data):
     )
     if(r.status_code >= 400 or r.status_code >= 500):
         raise Exception("Failed to reserve listing")
-    return data.json()
+    return r.json()

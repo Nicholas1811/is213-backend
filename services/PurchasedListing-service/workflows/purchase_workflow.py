@@ -15,12 +15,13 @@ retry_policy = RetryPolicy(
     initial_interval=timedelta(seconds=2),
     maximum_attempts=5,
 )
-sample_order_ref = str(workflow.uuid4())
+
 
 @workflow.defn
 class PurchaseWorkflow:
     @workflow.run
     async def run(self, data):
+        sample_order_ref = str(workflow.uuid4())
         compensations = []
         order_ref = str(workflow.uuid4())
         order_id = None
@@ -138,7 +139,6 @@ class PurchaseWorkflow:
                     retry_policy=retry_policy
                 )
                 ##TODO NIC: Update the payment_id in order to have the paymentID.
-                ## UNTESTED CODE, PLEASE TEST THIS.
                 order_update = await workflow.execute_activity(
                     update_order_paymentId,
                     {
@@ -151,7 +151,9 @@ class PurchaseWorkflow:
             else:
                 await workflow.execute_activity(
                     update_order_status,
-                    order_id,
+                    {
+                        "order_id": order_id
+                    },
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )

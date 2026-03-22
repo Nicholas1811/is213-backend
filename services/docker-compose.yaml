@@ -139,11 +139,29 @@ services:
     build:
       context: ./PurchasedListing-service
       dockerfile: Dockerfile
-    container_name: refund-service
+    container_name: purchase-worker
+    command: python -m worker.purchase_worker
 #    env_file:
 #      - ./Refund-service/.env
     expose:
       - "8080"
+    networks:
+      - temporal-network
+
+#  refund-worker:
+#    build:
+#      context: ./Refund-service
+#      dockerfile: Dockerfile
+#    container_name: purchase-worker
+#    command: python -m worker.refund_worker
+#    #    env_file:
+#    #      - ./Refund-service/.env
+#    expose:
+#      - "8080"
+#    networks:
+#      - temporal-network
+
+
 
   ## == Rabbit MQ ==
   rabbitmq:
@@ -244,6 +262,9 @@ services:
       - listing-service
       - point-service
       - purchase-product-service
+      networks:
+        - default
+        - temporal-network
 networks:
   temporal-network:
     driver: bridge

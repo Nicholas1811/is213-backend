@@ -35,6 +35,7 @@ async def cancel_order(data):
     if r.status_code >= 400 or r.status_code >= 500:
         raise Exception(f"Order service failed: {r.status_code} {r.text}")
     return r.json()
+
 @activity.defn
 async def update_order_status(data):
     r = requests.put(f"http://order-service:8080/{data['order_id']}",
@@ -48,6 +49,7 @@ async def update_order_status(data):
 
 @activity.defn
 async def update_order_paymentId(data):
+    print(data, flush=True)
     r = requests.put(f"http://order-service:8080/{data['order_id']}",
             json={
             "payment_id": data['payment_id']

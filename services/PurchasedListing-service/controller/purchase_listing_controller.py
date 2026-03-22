@@ -16,12 +16,14 @@ async def connect_temporal():
 
     while True:
         try:
-            temporal_client = await Client.connect("temporal:7233")
-            print("Connected to Temporal")
+            client = await Client.connect("temporal:7233")
+            temporal_client = client
+            print("Connected to Temporal & ready")
             break
+
         except Exception as e:
             print("Waiting for Temporal...", e)
-            time.sleep(3)
+            await asyncio.sleep(3)
 
 asyncio.run(connect_temporal())
 # Start purchase workflow
@@ -37,7 +39,7 @@ def purchase_listing():
     quantity = data.get("quantity", 1)
     points = data.get("points", 0)
 
-    workflow_id = str(uuid.UUID)
+    workflow_id = str(uuid.uuid4())
 
     async def start_workflow():
         result = await temporal_client.execute_workflow(
