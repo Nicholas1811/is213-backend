@@ -18,7 +18,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=8080
+ENV PORT=9999
 
 RUN corepack enable
 
@@ -28,6 +28,6 @@ RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/certs ./certs
 
-EXPOSE 8080
+EXPOSE 9999
 
 CMD ["node", "dist/src/index.js"]

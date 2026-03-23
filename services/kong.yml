@@ -24,7 +24,7 @@ services:
           - /users
 
   - name: listing-service
-    url: http://listing-service:8080
+    url: http://listing-service:9999
     routes:
       - name: listing-route
         paths:
@@ -81,6 +81,25 @@ services:
     connect_timeout: 60000
     read_timeout: 120000
     write_timeout: 60000
-
+plugins:
+  - name: cors
+    config:
+      origins:
+        - http://localhost:5173
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Authorization
+        - Content-Type
+      exposed_headers:
+        - Authorization
+      credentials: true
+      max_age: 36000
 
   ## should be dont need for notification for a route, this one should be handled internally.

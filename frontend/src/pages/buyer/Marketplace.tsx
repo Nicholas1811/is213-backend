@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Search, SlidersHorizontal, ShoppingBag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
 import {
   Select,
   SelectContent,
@@ -13,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCartStore, type CartItem } from "@/store/cartStore";
+import {getListings} from "@/api/listingEndpoints.ts";
+import type {Listing} from "@/api/types/listing.ts";
 
 // Mock data — will be replaced with TanStack Query hook
 const MOCK_LISTINGS = [
@@ -123,6 +126,16 @@ export default function Marketplace() {
     addItem(item);
   }
 
+  const [listingItems, setListingItems] = useState<Listing[]>([]);
+  useEffect(() => {
+    async function fetchListings() {
+      const data = await getListings();
+      setListingItems(data);
+    }
+
+    fetchListings();
+  }, []);
+  console.log(listingItems);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -178,22 +191,19 @@ export default function Marketplace() {
 
       {/* Product Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredListings.map((listing) => {
-          const savingsPercent = Math.round(
-            ((listing.originalPrice - listing.discountedPrice) / listing.originalPrice) * 100
-          );
+        {listingItems.map((listing) => {
 
           return (
             <Card key={listing.id} className="overflow-hidden transition-all hover:shadow-md">
               <Link to={`/buyer/marketplace/${listing.id}`}>
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
-                    src={listing.imageUrl}
+                    src={listing.s3ImageUrl}
                     alt={listing.name}
                     className="h-full w-full object-cover transition-transform hover:scale-105"
                   />
                   <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">
-                    {savingsPercent}% OFF
+                    {listing.unitPriceCents}
                   </Badge>
                 </div>
               </Link>
@@ -207,15 +217,9 @@ export default function Marketplace() {
                   {listing.description}
                 </p>
                 <div className="mt-3 flex items-center gap-2">
-                  <span className="text-xl font-bold text-primary">
-                    ${listing.discountedPrice.toFixed(2)}
-                  </span>
-                  <span className="text-sm text-muted-foreground line-through">
-                    ${listing.originalPrice.toFixed(2)}
-                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {listing.quantity} left
+                  {listing.qty} left
                 </p>
               </CardContent>
               <CardFooter className="pt-0">
