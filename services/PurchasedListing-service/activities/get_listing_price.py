@@ -11,7 +11,7 @@ import requests
 async def purchase_listing(data):
     listing_id = data['listing_id']
     r = requests.post(
-        f"http://listing-service/listings/{listing_id}/purchase",
+        f"http://listing-service:8080/listings/{listing_id}/purchase",
         json={
             "qty" : data['qty']
         }
@@ -26,7 +26,7 @@ async def purchase_listing(data):
 async def reset_listing(data):
     listing_id = data['listing_id']
     r = requests.post(
-        f"http://listing-service/listings/{listing_id}/restock",
+        f"http://listing-service:8080/listings/{listing_id}/restock",
         json={
             "qty" : data['qty']
         }
