@@ -19,30 +19,11 @@ const messaging = firebase.messaging();
 
 
 messaging.onBackgroundMessage((payload) => {
-
-  const { title, body } = payload.notification || {};
-
-  self.registration.showNotification(title || "Notification", {
-    body: body || "",
-    icon: "/icon.png",
-    data: payload.data || {},
+  // Do not show browser/system notifications. The app UI (navbar badge/dropdown)
+  // is the single notification surface.
+  self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+    for (const client of clientList) {
+      client.postMessage({ type: "FCM_BACKGROUND_MESSAGE", payload });
+    }
   });
 });
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-
-  event.waitUntil(
-      clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-        for (const client of clientList) {
-          if (client.url === "/" && "focus" in client) {
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow("/");
-        }
-      })
-  );
-});
-

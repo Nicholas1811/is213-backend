@@ -4,6 +4,8 @@ services:
     build: ./Notificationmanagement-service
     container_name: notification-mgmt-service
     command: python consumer.py
+    env_file:
+      - ./Notificationmanagement-service/.env
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: guest
@@ -13,8 +15,10 @@ services:
 
   mock_producer:
     build: ./mock-producer
-    expose:
-      - "8080"
+#    expose:
+#      - "8080"
+    ports:
+        - "9000:8080"
     depends_on:
       - rabbitmq
 

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingCart, Leaf, User, LogOut, Coins, Package, Home } from "lucide-react";
+import { ShoppingCart, Leaf, User, LogOut, Coins, Package, Home, Bell } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,21 +11,68 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/store/cartStore";
-import { useAuthStore } from "@/store/authStore";
 import { usePointsStore } from "@/store/pointsStore";
+import { useNotificationStore } from "@/store/notificationStore";
 import { APP_SHORT_NAME, UserRole } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { registerNotificationToken } from "@/services/notificationService";
 
 export default function Navbar() {
   const location = useLocation();
-  const role = useAuthStore((s) => s.selectedRole);
-  const userName = useAuthStore((s) => s.userName);
-  const clearAuth = useAuthStore((s) => s.clearAuth);
+
+  // ✅ MOCK USER (replace later with auth)
+  const [role] = useState<UserRole>(UserRole.BUYER); // 🔁 change to SELLER to test
+  const userId = "temp-user-id"; //TODO CHANGE OVER HERE TO GET VIA KEYCLOAK
+  const userName = "Guest";
+
   const itemCount = useCartStore((s) => s.getItemCount());
   const balance = usePointsStore((s) => s.balance);
+  const notifications = useNotificationStore((s) => s.notifications);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
+  const hydrateFromApi = useNotificationStore((s) => s.hydrateFromApi);
+
+  const [isNotificationLoading, setIsNotificationLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+
+  const handleEnableNotifications = async () => {
+    if (!userId) {
+      setNotificationError("User not authenticated");
+      return;
+    }
+
+    setIsNotificationLoading(true);
+    setNotificationError(null);
+
+    try {
+      await registerNotificationToken(userId);
+      setNotificationError(null);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to enable notifications";
+      setNotificationError(errorMessage);
+      console.error(errorMessage);
+    } finally {
+      setIsNotificationLoading(false);
+    }
+  };
+
+  const formatReceivedAt = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = Date.now();
+    const diffMinutes = Math.floor((now - date.getTime()) / 60000);
+
+    if (diffMinutes < 1) return "Just now";
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    return date.toLocaleString();
+  };
 
   const isBuyer = role === UserRole.BUYER;
-  const isSeller = role === UserRole.SELLER;
+  const isSeller = !isBuyer;
 
   const buyerLinks = [
     { to: "/buyer", label: "Home", icon: Home },
@@ -41,6 +89,10 @@ export default function Navbar() {
   ];
 
   const navLinks = isBuyer ? buyerLinks : isSeller ? sellerLinks : [];
+
+  useEffect(() => {
+    void hydrateFromApi(userId);
+  }, [hydrateFromApi, userId]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -74,10 +126,63 @@ export default function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-3">
+          {/* 🔔 Notification button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleEnableNotifications}
+            disabled={isNotificationLoading}
+            title={notificationError || "Enable notifications"}
+            className={notificationError ? "text-destructive" : ""}
+          >
+            <Bell className="h-5 w-5" />
+          </Button>
+
+          {/* Notification history dropdown */}
+          <DropdownMenu
+            onOpenChange={(open) => {
+              if (open) {
+                markAllAsRead();
+                void hydrateFromApi(userId);
+              }
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2">
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="h-5 min-w-5 px-1 text-[10px]">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 p-2">
+              <div className="px-2 py-1 text-sm font-medium">Past Notifications</div>
+              <DropdownMenuSeparator />
+              {notifications.length === 0 ? (
+                <div className="px-2 py-3 text-sm text-muted-foreground">No notifications yet.</div>
+              ) : (
+                <div className="max-h-80 space-y-1 overflow-y-auto">
+                  {notifications.map((notification) => (
+                    <div key={notification.id} className="rounded-md border p-2">
+                      <p className="text-sm font-medium leading-tight">{notification.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{notification.body}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">{formatReceivedAt(notification.receivedAt)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Points badge (buyer only) */}
           {isBuyer && (
             <Link to="/buyer/points">
-              <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer">
+              <Badge
+                variant="secondary"
+                className="gap-1 bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
+              >
                 <Coins className="h-3 w-3" />
                 {balance} pts
               </Badge>
@@ -99,57 +204,52 @@ export default function Navbar() {
           )}
 
           {/* User menu */}
-          {role && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium">{userName || "User"}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{role}</p>
-                </div>
-                <DropdownMenuSeparator />
-                {isBuyer && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/buyer/orders" className="cursor-pointer">
-                      <Package className="mr-2 h-4 w-4" />
-                      My Orders
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {isBuyer && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/buyer/points" className="cursor-pointer">
-                      <Coins className="mr-2 h-4 w-4" />
-                      Points History
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {isSeller && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/seller/listings" className="cursor-pointer">
-                      <Package className="mr-2 h-4 w-4" />
-                      My Listings
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="cursor-pointer text-destructive"
-                  onClick={() => {
-                    clearAuth();
-                    // Keycloak logout will be handled here
-                  }}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <User className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <div className="px-2 py-1.5">
+                <p className="text-sm font-medium">{userName}</p>
+                <p className="text-xs text-muted-foreground capitalize">{role}</p>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {isBuyer && (
+                <DropdownMenuItem asChild>
+                  <Link to="/buyer/orders" className="cursor-pointer">
+                    <Package className="mr-2 h-4 w-4" />
+                    My Orders
+                  </Link>
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              )}
+
+              {isSeller && (
+                <DropdownMenuItem asChild>
+                  <Link to="/seller/listings" className="cursor-pointer">
+                    <Package className="mr-2 h-4 w-4" />
+                    My Listings
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator />
+
+              {/* Mock logout */}
+              <DropdownMenuItem
+                className="cursor-pointer text-destructive"
+                onClick={() => {
+                  alert("Logout (mock)");
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
