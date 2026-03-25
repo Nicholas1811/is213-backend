@@ -24,11 +24,12 @@ services:
           - /users
 
   - name: listing-service
-    url: http://listing-service:9999
+    url: http://listing-service:8080
     routes:
       - name: listing-route
         paths:
           - /listings
+        strip_path: false
     plugins:
       - name: rate-limiting
         config:

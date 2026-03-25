@@ -17,13 +17,13 @@ export const listListingsQuerySchema = z.object({
 export const listListingsResponseSchema = z.array(selectListingsSchema);
 
 export const createListingsRequestSchema = z.object({
-  imageUrls: z.array(z.url()).min(1).max(50),
+  imageUrls: z.array(z.string().min(1)).min(1).max(50),
 });
 
 export const createListingsResponseSchema = z.array(selectListingsSchema);
 
 export const patchListingBodySchema = listingOptionalFieldsSchema.extend({
-  imageUrl: z.url().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export const purchaseListingBodySchema = z.object({
