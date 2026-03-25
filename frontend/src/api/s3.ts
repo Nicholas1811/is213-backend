@@ -1,4 +1,5 @@
-const S3_BASE = "https://smuedu-dev.outsystemsenterprise.com/SMULab_AmazonS3/rest/AmazonS3";
+const S3_API_BASE = "https://smuedu-dev.outsystemsenterprise.com/SMULab_AmazonS3/rest/AmazonS3";
+const S3_BUCKET_URL = "https://smu-bucket1.s3.ap-southeast-1.amazonaws.com";
 const S3_FOLDER = "listings";
 const S3_SUBFOLDER = "images";
 const S3_API_KEY = import.meta.env.VITE_S3_API_KEY as string;
@@ -20,7 +21,7 @@ export async function uploadImageToS3(file: File): Promise<string> {
   const base64 = await toBase64(file);
   const fileName = `${crypto.randomUUID()}${getExtension(file)}`;
 
-  const uploadRes = await fetch(`${S3_BASE}/UploadFile`, {
+  const uploadRes = await fetch(`${S3_API_BASE}/UploadFile`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Contacts-Key": S3_API_KEY },
     body: JSON.stringify({
@@ -35,13 +36,5 @@ export async function uploadImageToS3(file: File): Promise<string> {
   if (!uploadRes.ok) throw new Error(`S3 upload failed (${uploadRes.status})`);
   const { key } = await uploadRes.json();
 
-  const urlRes = await fetch(`${S3_BASE}/FetchFileUrl`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Contacts-Key": S3_API_KEY },
-    body: JSON.stringify({ folderName: S3_FOLDER, subFolderName: S3_SUBFOLDER, key }),
-  });
-
-  if (!urlRes.ok) throw new Error(`S3 fetch URL failed (${urlRes.status})`);
-  const { url } = await urlRes.json();
-  return url as string;
+  return `${S3_BUCKET_URL}/${S3_FOLDER}/${S3_SUBFOLDER}/${key}`;
 }
