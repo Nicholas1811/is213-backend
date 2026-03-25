@@ -1,36 +1,10 @@
-import type { UploadUrlResult } from "@/lib/s3/presign";
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import db from "@/db";
 import { listings } from "@/db/schema";
-import { createListingUploadUrl } from "@/lib/s3/presign";
 
 type ListingRow = typeof listings.$inferSelect;
 type ListingInsert = typeof listings.$inferInsert;
 type ListingStatus = ListingRow["status"];
-
-interface CreateUploadUrlInput {
-  filename: string;
-  contentType: string;
-}
-
-export interface ListingUploadIntentInput {
-  filename: string;
-  contentType: string;
-  name?: string;
-  description?: string;
-  qty?: number;
-  unitPriceCents?: number;
-  bestBefore?: Date;
-  status?: ListingStatus;
-}
-
-export interface ListingUploadIntentResult {
-  listing: ListingRow;
-  uploadUrl: string;
-  publicUrl: string;
-  objectKey: string;
-  expiresIn: number;
-}
 
 export class ListingNotFoundError extends Error {
   constructor(message = "Listing not found") {
@@ -72,39 +46,10 @@ export async function createListing(listing: ListingInsert): Promise<ListingRow>
   return inserted;
 }
 
-export async function createUploadUrl(input: CreateUploadUrlInput): Promise<UploadUrlResult> {
-  return createListingUploadUrl(input);
-}
-
-export async function createListingsWithUploadUrls(inputs: ListingUploadIntentInput[]): Promise<ListingUploadIntentResult[]> {
-  const results: ListingUploadIntentResult[] = [];
-
-  for (const input of inputs) {
-    const upload = await createListingUploadUrl({
-      filename: input.filename,
-      contentType: input.contentType,
-    });
-
-    const listing = await createListing({
-      s3ImageUrl: upload.publicUrl,
-      name: input.name,
-      description: input.description,
-      qty: input.qty,
-      unitPriceCents: input.unitPriceCents,
-      bestBefore: input.bestBefore,
-      status: input.status,
-    });
-
-    results.push({
-      listing,
-      uploadUrl: upload.uploadUrl,
-      publicUrl: upload.publicUrl,
-      objectKey: upload.objectKey,
-      expiresIn: upload.expiresIn,
-    });
-  }
-
-  return results;
+export async function createListings(items: ListingInsert[]): Promise<ListingRow[]> {
+  return db.insert(listings)
+    .values(items)
+    .returning();
 }
 
 export async function getListingById(id: number): Promise<ListingRow | null> {
@@ -251,7 +196,6 @@ export async function cancelListing(id: number): Promise<ListingRow | null> {
 export async function syncListingFromEvent(snapshot: ListingRow): Promise<ListingRow | null> {
   const [updated] = await db.update(listings)
     .set({
-      s3ImageUrl: snapshot.s3ImageUrl,
       name: snapshot.name,
       description: snapshot.description,
       qty: snapshot.qty,
