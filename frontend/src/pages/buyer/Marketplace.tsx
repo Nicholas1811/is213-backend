@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, SlidersHorizontal, ShoppingBag } from "lucide-react";
+import { Search, ShoppingBag, ImageIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -14,139 +13,95 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCartStore, type CartItem } from "@/store/cartStore";
-import {getListings} from "@/api/listingEndpoints.ts";
-import type {Listing} from "@/api/types/listing.ts";
+import apiClient from "@/api/client";
+import { ENDPOINTS } from "@/api/endpoints";
+import { fetchImageUrl } from "@/api/s3";
 
-// Mock data — will be replaced with TanStack Query hook
-const MOCK_LISTINGS = [
-  {
-    id: "1",
-    name: "Grilled Chicken Salad",
-    description: "Fresh garden salad with grilled chicken breast",
-    category: "Salads",
-    originalPrice: 15.9,
-    discountedPrice: 8.9,
-    imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop",
-    quantity: 5,
-    status: "active" as const,
-  },
-  {
-    id: "2",
-    name: "Pasta Carbonara",
-    description: "Creamy pasta with bacon and parmesan",
-    category: "Pasta",
-    originalPrice: 18.5,
-    discountedPrice: 10.5,
-    imageUrl: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=300&fit=crop",
-    quantity: 3,
-    status: "active" as const,
-  },
-  {
-    id: "3",
-    name: "Sushi Platter",
-    description: "Assorted sushi with salmon, tuna and prawn",
-    category: "Japanese",
-    originalPrice: 25.0,
-    discountedPrice: 14.0,
-    imageUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop",
-    quantity: 2,
-    status: "active" as const,
-  },
-  {
-    id: "4",
-    name: "Margherita Pizza",
-    description: "Classic pizza with fresh mozzarella and basil",
-    category: "Pizza",
-    originalPrice: 22.0,
-    discountedPrice: 12.0,
-    imageUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=400&h=300&fit=crop",
-    quantity: 4,
-    status: "active" as const,
-  },
-  {
-    id: "5",
-    name: "Açaí Bowl",
-    description: "Blended açaí topped with granola, banana, and berries",
-    category: "Bowls",
-    originalPrice: 14.0,
-    discountedPrice: 7.5,
-    imageUrl: "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=400&h=300&fit=crop",
-    quantity: 6,
-    status: "active" as const,
-  },
-  {
-    id: "6",
-    name: "Thai Green Curry",
-    description: "Aromatic green curry with chicken and vegetables",
-    category: "Thai",
-    originalPrice: 16.5,
-    discountedPrice: 9.0,
-    imageUrl: "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=400&h=300&fit=crop",
-    quantity: 3,
-    status: "active" as const,
-  },
-];
-
-const CATEGORIES = ["All", "Salads", "Pasta", "Japanese", "Pizza", "Bowls", "Thai"];
+interface ApiListing {
+  id: number;
+  imageUrl: string | null;
+  name: string | null;
+  description: string | null;
+  qty: number;
+  unitPriceCents: number | null;
+  status: "created" | "processed" | "active" | "sold_out" | "cancelled";
+  bestBefore: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [sortBy, setSortBy] = useState("savings");
+  const [sortBy, setSortBy] = useState("newest");
+  const [listings, setListings] = useState<ApiListing[]>([]);
+  const [imageUrls, setImageUrls] = useState<Record<number, string>>({});
+  const [isLoading, setIsLoading] = useState(true);
   const addItem = useCartStore((s) => s.addItem);
 
-  const filteredListings = MOCK_LISTINGS.filter((listing) => {
-    const matchesSearch =
-      listing.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      listing.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "All" || listing.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  }).sort((a, b) => {
-    if (sortBy === "savings") {
-      const savingsA = ((a.originalPrice - a.discountedPrice) / a.originalPrice) * 100;
-      const savingsB = ((b.originalPrice - b.discountedPrice) / b.originalPrice) * 100;
-      return savingsB - savingsA;
-    }
-    if (sortBy === "price-low") return a.discountedPrice - b.discountedPrice;
-    if (sortBy === "price-high") return b.discountedPrice - a.discountedPrice;
-    return 0;
-  });
+  useEffect(() => {
+    setIsLoading(true);
+    apiClient
+      .get<ApiListing[]>(ENDPOINTS.LISTINGS, { params: { status: "active" } })
+      .then(async (res) => {
+        const data = res.data;
+        setListings(data);
 
-  function handleAddToCart(listing: typeof MOCK_LISTINGS[0]) {
+        const urlMap: Record<number, string> = {};
+        await Promise.all(
+          data
+            .filter((l) => l.imageUrl)
+            .map(async (l) => {
+              try {
+                urlMap[l.id] = await fetchImageUrl(l.imageUrl!);
+              } catch {
+                // ignore failed image fetches
+              }
+            })
+        );
+        setImageUrls(urlMap);
+      })
+      .catch((err) => console.error("Failed to load marketplace", err))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const filteredListings = listings
+    .filter((l) => {
+      const q = searchQuery.toLowerCase();
+      return (
+        (l.name ?? "").toLowerCase().includes(q) ||
+        (l.description ?? "").toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === "price-low") return (a.unitPriceCents ?? 0) - (b.unitPriceCents ?? 0);
+      if (sortBy === "price-high") return (b.unitPriceCents ?? 0) - (a.unitPriceCents ?? 0);
+      // newest: default API order (createdAt desc)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+  function handleAddToCart(listing: ApiListing) {
+    const unitPrice = (listing.unitPriceCents ?? 0) / 100;
     const item: CartItem = {
-      listingId: listing.id,
-      name: listing.name,
-      imageUrl: listing.imageUrl,
-      unitPrice: listing.discountedPrice,
-      originalPrice: listing.originalPrice,
+      listingId: String(listing.id),
+      name: listing.name ?? "Untitled",
+      imageUrl: imageUrls[listing.id] ?? "",
+      unitPrice,
+      originalPrice: unitPrice,
       quantity: 1,
-      maxQuantity: listing.quantity,
+      maxQuantity: listing.qty,
     };
     addItem(item);
   }
 
-  const [listingItems, setListingItems] = useState<Listing[]>([]);
-  useEffect(() => {
-    async function fetchListings() {
-      const data = await getListings();
-      setListingItems(data);
-    }
-
-    fetchListings();
-  }, []);
-  console.log(listingItems);
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Marketplace</h1>
-        <p className="text-muted-foreground mt-1">
-          Discover discounted meals near you
-        </p>
+        <p className="text-muted-foreground mt-1">Discover discounted meals near you</p>
       </div>
 
-      {/* Search & Filters */}
+      {/* Search & Sort */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -157,91 +112,105 @@ export default function Marketplace() {
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[140px]">
-              <SlidersHorizontal className="mr-2 h-4 w-4" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="savings">Best Savings</SelectItem>
-              <SelectItem value="price-low">Price: Low to High</SelectItem>
-              <SelectItem value="price-high">Price: High to Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="price-low">Price: Low to High</SelectItem>
+            <SelectItem value="price-high">Price: High to Low</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Results count */}
       <p className="text-sm text-muted-foreground">
-        {filteredListings.length} meals found
+        {isLoading ? "Loading..." : `${filteredListings.length} meal${filteredListings.length !== 1 ? "s" : ""} available`}
       </p>
 
-      {/* Product Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {listingItems.map((listing) => {
-
-          return (
+      {/* Grid */}
+      {isLoading ? (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="aspect-[4/3] w-full" />
+              <CardContent className="pt-4 space-y-2">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </CardContent>
+              <CardFooter className="pt-0">
+                <Skeleton className="h-9 w-full" />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : filteredListings.length > 0 ? (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredListings.map((listing) => (
             <Card key={listing.id} className="overflow-hidden transition-all hover:shadow-md">
               <Link to={`/buyer/marketplace/${listing.id}`}>
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  <img
-                    src={listing.s3ImageUrl}
-                    alt={listing.name}
-                    className="h-full w-full object-cover transition-transform hover:scale-105"
-                  />
-                  <Badge className="absolute top-3 right-3 bg-primary text-primary-foreground">
-                    {listing.unitPriceCents}
-                  </Badge>
+                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                  {imageUrls[listing.id] ? (
+                    <img
+                      src={imageUrls[listing.id]}
+                      alt={listing.name ?? "Listing"}
+                      className="h-full w-full object-cover transition-transform hover:scale-105"
+                    />
+                  ) : listing.imageUrl ? (
+                    <Skeleton className="h-full w-full" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
+                    </div>
+                  )}
+                  {listing.bestBefore && (
+                    <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-xs text-white">
+                      Best before {new Date(listing.bestBefore).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
               </Link>
+
               <CardContent className="pt-4">
                 <Link to={`/buyer/marketplace/${listing.id}`}>
-                  <h3 className="font-semibold text-lg hover:text-primary transition-colors">
-                    {listing.name}
+                  <h3 className="font-semibold text-lg hover:text-primary transition-colors leading-tight">
+                    {listing.name ?? <span className="italic text-muted-foreground">Untitled</span>}
                   </h3>
                 </Link>
                 <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {listing.description}
+                  {listing.description ?? ""}
                 </p>
-                <div className="mt-3 flex items-center gap-2">
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-lg font-bold text-primary">
+                    {listing.unitPriceCents != null
+                      ? `$${(listing.unitPriceCents / 100).toFixed(2)}`
+                      : "—"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{listing.qty} left</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {listing.qty} left
-                </p>
               </CardContent>
+
               <CardFooter className="pt-0">
                 <Button
                   className="w-full gap-2"
+                  disabled={listing.qty === 0}
                   onClick={() => handleAddToCart(listing)}
                 >
                   <ShoppingBag className="h-4 w-4" />
-                  Add to Cart
+                  {listing.qty === 0 ? "Sold Out" : "Add to Cart"}
                 </Button>
               </CardFooter>
             </Card>
-          );
-        })}
-      </div>
-
-      {filteredListings.length === 0 && (
+          ))}
+        </div>
+      ) : (
         <div className="text-center py-12">
           <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-medium">No meals found</h3>
           <p className="text-muted-foreground mt-1">
-            Try adjusting your search or filter criteria
+            {searchQuery ? "Try adjusting your search" : "Check back soon for available meals"}
           </p>
         </div>
       )}
