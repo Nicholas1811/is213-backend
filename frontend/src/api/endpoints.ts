@@ -5,7 +5,7 @@ const API_GATEWAY_BASE = import.meta.env.VITE_API_GATEWAY_URL || "http://localho
 
 export const ENDPOINTS = {
   // Listing / Inventory Service
-  LISTINGS: `${API_GATEWAY_BASE}/listings/listings`,
+  LISTINGS: `${API_GATEWAY_BASE}/listings`,
   LISTING_BY_ID: (id: string) => `${API_GATEWAY_BASE}/listings/${id}`,
   MY_LISTINGS: `${API_GATEWAY_BASE}/listings/mine`,
   CREATE_LISTING: `${API_GATEWAY_BASE}/listings`,
