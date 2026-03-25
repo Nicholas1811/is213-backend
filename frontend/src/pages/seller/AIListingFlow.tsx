@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -9,31 +9,19 @@ import {
   XCircle,
   Loader2,
   Image as ImageIcon,
-  PenLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { MAX_AI_LISTINGS, AI_POLL_INTERVAL_MS } from "@/lib/constants";
+import { MAX_AI_LISTINGS } from "@/lib/constants";
+import { uploadImageToS3 } from "@/api/s3";
+import { batchCreateListings } from "@/api/listingEndpoints";
 
-type FlowStep = "upload" | "processing" | "review";
+type FlowStep = "upload" | "processing";
 
 interface ImageFile {
   file: File;
   preview: string;
-}
-
-interface GeneratedListing {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  originalPrice: number;
-  discountedPrice: number;
-  imageUrl: string;
-  quantity: number;
-  accepted: boolean;
 }
 
 // --- Neural Network Animation Nodes ---
@@ -193,8 +181,7 @@ export default function AIListingFlow() {
   const [step, setStep] = useState<FlowStep>("upload");
   const [images, setImages] = useState<ImageFile[]>([]);
   const [progress, setProgress] = useState(0);
-  const [generatedListings, setGeneratedListings] = useState<GeneratedListing[]>([]);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Handle image selection
   const handleImageUpload = useCallback(
@@ -224,66 +211,29 @@ export default function AIListingFlow() {
     });
   }
 
-  // Simulate AI processing with progress
-  useEffect(() => {
-    if (step !== "processing") return;
-
-    const imageCount = images.length;
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += Math.random() * 12 + 3;
-      if (currentProgress >= 100) {
-        currentProgress = 100;
-        clearInterval(interval);
-
-        // Generate mock listings — one per uploaded image
-        const mockListings: GeneratedListing[] = Array.from(
-          { length: imageCount },
-          (_, i) => ({
-            id: `ai-${Date.now()}-${i}`,
-            name: MOCK_MEAL_NAMES[i % MOCK_MEAL_NAMES.length],
-            description: MOCK_DESCRIPTIONS[i % MOCK_DESCRIPTIONS.length],
-            category: MOCK_CATEGORIES[i % MOCK_CATEGORIES.length],
-            originalPrice: Number((Math.random() * 15 + 10).toFixed(2)),
-            discountedPrice: Number((Math.random() * 8 + 4).toFixed(2)),
-            imageUrl:
-              images[i]?.preview ??
-              `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop`,
-            quantity: Math.floor(Math.random() * 8) + 1,
-            accepted: true,
-          })
-        );
-
-        setTimeout(() => {
-          setGeneratedListings(mockListings);
-          setStep("review");
-        }, 500);
-      }
-      setProgress(currentProgress);
-    }, AI_POLL_INTERVAL_MS / 3);
-
-    return () => clearInterval(interval);
-  }, [step, images]);
-
-  function startProcessing() {
+  async function startProcessing() {
+    setUploadError(null);
     setProgress(0);
     setStep("processing");
-  }
 
-  function toggleListing(id: string) {
-    setGeneratedListings((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, accepted: !l.accepted } : l))
-    );
-  }
+    try {
+      let completed = 0;
+      const imageUrls = await Promise.all(
+        images.map(async ({ file }) => {
+          const url = await uploadImageToS3(file);
+          completed++;
+          setProgress((completed / images.length) * 100);
+          return url;
+        })
+      );
 
-  async function handleConfirm() {
-    setIsConfirming(true);
-    // Simulate API call — will be replaced with TanStack mutation
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    navigate("/seller/listings");
+      await batchCreateListings(imageUrls);
+      navigate("/seller/listings");
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      setStep("upload");
+    }
   }
-
-  const acceptedCount = generatedListings.filter((l) => l.accepted).length;
 
   return (
     <div className="space-y-6">
@@ -300,21 +250,18 @@ export default function AIListingFlow() {
           </h1>
           <p className="text-muted-foreground mt-1">
             {step === "upload" && "Upload photos and let AI create your listings"}
-            {step === "processing" && "AI is analyzing your images..."}
-            {step === "review" && "Review and confirm generated listings"}
+            {step === "processing" && "Uploading images and creating listings..."}
           </p>
         </div>
       </div>
 
       {/* Step Indicators */}
       <div className="flex items-center gap-4">
-        {(["upload", "processing", "review"] as const).map((s, i) => {
-          const stepLabels = ["Upload", "Processing", "Review"];
+        {(["upload", "processing"] as const).map((s, i) => {
+          const stepLabels = ["Upload", "Processing"];
           const stepNumber = i + 1;
           const isCurrent = s === step;
-          const isCompleted =
-            (s === "upload" && (step === "processing" || step === "review")) ||
-            (s === "processing" && step === "review");
+          const isCompleted = s === "upload" && step === "processing";
 
           return (
             <div key={s} className="flex items-center gap-2">
@@ -417,6 +364,10 @@ export default function AIListingFlow() {
               </CardContent>
             </Card>
 
+            {uploadError && (
+              <p className="text-sm text-destructive">{uploadError}</p>
+            )}
+
             {/* Start Button */}
             <Button
               size="lg"
@@ -467,178 +418,7 @@ export default function AIListingFlow() {
           </motion.div>
         )}
 
-        {/* Step 3: Review */}
-        {step === "review" && (
-          <motion.div
-            key="review"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="space-y-6"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {acceptedCount} of {generatedListings.length} listings selected
-              </p>
-              <Button
-                className="gap-2"
-                onClick={handleConfirm}
-                disabled={acceptedCount === 0 || isConfirming}
-              >
-                {isConfirming ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Confirming...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4" />
-                    Confirm {acceptedCount} Listing
-                    {acceptedCount !== 1 ? "s" : ""}
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {generatedListings.map((listing) => (
-                <Card
-                  key={listing.id}
-                  className={`overflow-hidden transition-all ${
-                    listing.accepted
-                      ? "ring-2 ring-primary/50"
-                      : "opacity-60"
-                  }`}
-                >
-                  <div className="relative">
-                    <img
-                      src={listing.imageUrl}
-                      alt={listing.name}
-                      className="h-40 w-full object-cover"
-                    />
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <Badge className="bg-primary text-primary-foreground gap-1">
-                        <Sparkles className="h-3 w-3" />
-                        AI Generated
-                      </Badge>
-                    </div>
-                    {/* Toggle overlay */}
-                    <button
-                      type="button"
-                      onClick={() => toggleListing(listing.id)}
-                      className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/10 transition-colors"
-                    >
-                      {!listing.accepted && (
-                        <div className="flex items-center gap-2 rounded-lg bg-background/90 px-4 py-2">
-                          <XCircle className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">
-                            Click to include
-                          </span>
-                        </div>
-                      )}
-                    </button>
-                  </div>
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-semibold text-lg">{listing.name}</h3>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        title="Edit listing"
-                      >
-                        <PenLine className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {listing.description}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{listing.category}</Badge>
-                      <span className="text-xs text-muted-foreground">
-                        Qty: {listing.quantity}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-lg font-bold text-primary">
-                        ${listing.discountedPrice.toFixed(2)}
-                      </span>
-                      <span className="text-sm text-muted-foreground line-through">
-                        ${listing.originalPrice.toFixed(2)}
-                      </span>
-                      <Badge variant="secondary" className="ml-auto text-xs">
-                        {Math.round(
-                          ((listing.originalPrice - listing.discountedPrice) /
-                            listing.originalPrice) *
-                            100
-                        )}
-                        % OFF
-                      </Badge>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant={listing.accepted ? "default" : "outline"}
-                        size="sm"
-                        className="flex-1 gap-1"
-                        onClick={() => toggleListing(listing.id)}
-                      >
-                        {listing.accepted ? (
-                          <>
-                            <CheckCircle2 className="h-3 w-3" />
-                            Included
-                          </>
-                        ) : (
-                          "Include"
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
     </div>
   );
 }
-
-// --- Mock data for AI-generated listings ---
-const MOCK_MEAL_NAMES = [
-  "Grilled Salmon Bowl",
-  "Teriyaki Chicken Bento",
-  "Mediterranean Wrap",
-  "Veggie Poke Bowl",
-  "BBQ Pulled Pork Slider",
-  "Mango Sticky Rice",
-  "Tom Yum Soup",
-  "Caesar Salad",
-  "Pad Thai Noodles",
-  "Matcha Cheesecake",
-];
-
-const MOCK_DESCRIPTIONS = [
-  "Freshly grilled salmon served over a bed of seasoned rice with avocado and edamame",
-  "Tender teriyaki chicken with steamed rice, pickled vegetables, and miso soup",
-  "Whole wheat wrap filled with hummus, feta, olives, and roasted vegetables",
-  "Colorful poke bowl with marinated tofu, mango, cucumber, and sesame dressing",
-  "Slow-cooked pulled pork with tangy BBQ sauce on a brioche slider bun",
-  "Classic Thai dessert with sweet coconut sticky rice and fresh mango slices",
-  "Spicy and sour Thai soup with shrimp, mushrooms, and lemongrass",
-  "Crisp romaine lettuce with parmesan, croutons, and classic Caesar dressing",
-  "Stir-fried rice noodles with shrimp, tofu, peanuts, and tamarind sauce",
-  "Creamy matcha cheesecake with a graham cracker crust and white chocolate drizzle",
-];
-
-const MOCK_CATEGORIES = [
-  "Bowls",
-  "Japanese",
-  "Wraps",
-  "Bowls",
-  "Burgers",
-  "Desserts",
-  "Thai",
-  "Salads",
-  "Thai",
-  "Desserts",
-];
