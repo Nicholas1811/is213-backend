@@ -1,5 +1,6 @@
 import requests
 from temporalio import activity
+from class_model.input_model import RefundRequest
 
 @activity.defn
 def refund_payment(data):
