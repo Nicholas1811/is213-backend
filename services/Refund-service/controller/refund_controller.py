@@ -2,9 +2,6 @@ import asyncio
 import time
 from flask import Flask, jsonify, request
 from temporalio.client import Client
-from typing import Optional
-from pydantic import BaseModel, ValidationError
-from class_model.input_model import RefundRequest
 
 app = Flask(__name__)
 temporal_client = None
@@ -22,35 +19,20 @@ async def connect_temporal():
 
 asyncio.run(connect_temporal())
 
-@app.route("/process", methods=["POST"])
+@app.route("/refund/process", methods=["POST"])
 def process_refund():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return {"error": "Request body must be a JSON object"}, 400
-    required_fields = ["order_id", "user_id"]
-
-    try:
-        # unpack refund request class into dictionary
-        validated_request = RefundRequest(**data)
-    except ValidationError as e:
-        # error handling to catch any errors converting
-        return {"error": e.errors()}, 400
-
-    # point id and payment id is either or, whichever is not null, go and process
-    if not validated_request.point_reference_id and not validated_request.payment_intent_id:
-        return {"error": "Missing required fields: either point_reference_id or payment_intent_id must be provided"}, 400
-    workflow_id = f"refund-{validated_request.order_id}"
-
-    # convert to dictionary
-    if hasattr(validated_request, "dict"):
-        payload = validated_request.dict()
-    else:
-        payload = validated_request.model_dump()
-
+    required_fields = ["order_id", "user_id", "point_id", "points_amount", "payment_id", "refund_amount"]
+    missing = [field for field in required_fields if data.get(field) in (None, "")]
+    if missing:
+        return {"error": f"Missing required fields: {', '.join(missing)}"}, 400
+    workflow_id = f"refund-{data['order_id']}"
     async def start_workflow():
         return await temporal_client.execute_workflow(
             "RefundWorkflow",
-            payload,
+            data,
             id=workflow_id,
             task_queue="refund-task-queue",
         )

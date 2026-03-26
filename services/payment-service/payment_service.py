@@ -94,6 +94,12 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         payment_intent_id = session.get("payment_intent")
         metadata = session.get("metadata", {})
 
+
+        print("------------------------------------------------")
+        print(f"SUCCESS! Payment Intent ID: {payment_intent_id}")
+        print("details below:")
+        print(stripe.PaymentIntent.retrieve(payment_intent_id))
+
         new_payment = Payment(
                 payment_stripe_id=payment_stripe_id,
                 user_id=metadata.get("user_id"),
