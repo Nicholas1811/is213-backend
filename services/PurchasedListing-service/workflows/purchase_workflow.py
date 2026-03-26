@@ -147,6 +147,7 @@ class PurchaseWorkflow:
                     },
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy)
+                print(order_update, flush=True)
                 return payment_id
             else:
                 await workflow.execute_activity(
@@ -157,7 +158,7 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
-                return {"status": "order created, point fully paid"}
+                return {"status": "Order created, Paid fully using points!"}
 
         except Exception as e:
             workflow.logger.error("Workflow failed, running compensations")

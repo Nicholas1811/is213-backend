@@ -75,7 +75,7 @@ export default function ListingDetail() {
         user_id: effectiveUserId,
         quantity,
         //points: pointsToUse,
-        points: 700, //TODO GET ALL USER POINTS
+        points: 10, //TODO GET ALL USER POINTS
       });
 
       if ("checkout_url" in response && response.checkout_url) {
