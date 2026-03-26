@@ -27,3 +27,22 @@ export interface CreateOrderRequest {
   }[];
   pointsToRedeem: number;
 }
+
+export interface PurchaseRequest {
+  listing_id: number;
+  user_id: string;
+  quantity: number;
+  points: number;
+}
+
+export interface PurchaseStatusResponse {
+  status: string;
+}
+
+export interface PurchaseCheckoutResponse {
+  checkout_url: string;
+  checkout_id: string;
+}
+
+export type PurchaseResponse = PurchaseStatusResponse | PurchaseCheckoutResponse;
+

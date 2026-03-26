@@ -33,6 +33,7 @@ export const ENDPOINTS = {
 
   // Payment Service
   PAYMENTS: `${API_GATEWAY_BASE}/payments`,
+  PURCHASE: `${API_GATEWAY_BASE}/purchases/purchase`,
 
   // Auth / User
   USER_PROFILE: `${API_GATEWAY_BASE}/user-auth/profile`,

@@ -1,14 +1,17 @@
 import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { ArrowLeft, ShoppingBag, Minus, Plus, ImageIcon } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { useCartStore, type CartItem } from "@/store/cartStore";
+import { useAuthStore } from "@/store/authStore";
+//import { usePointsStore } from "@/store/pointsStore";
 import apiClient from "@/api/client";
 import { ENDPOINTS } from "@/api/endpoints";
 import { fetchImageUrl } from "@/api/s3";
+import { purchaseNow } from "@/api/purchaseEndpoints";
 
 interface ApiListing {
   id: number;
@@ -30,11 +33,12 @@ export default function ListingDetail() {
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const addItem = useCartStore((s) => s.addItem);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const userId = useAuthStore((s) => s.userId);
+  //const pointsBalance = usePointsStore((s) => s.balance);
 
   useEffect(() => {
     if (!id) return;
-    setIsLoading(true);
     apiClient
       .get<ApiListing>(`${ENDPOINTS.LISTINGS}/${id}`)
       .then(async (res) => {
@@ -55,19 +59,44 @@ export default function ListingDetail() {
       .finally(() => setIsLoading(false));
   }, [id]);
 
-  function handleAddToCart() {
+  async function handlePurchaseNow() {
     if (!listing) return;
-    const unitPrice = (listing.unitPriceCents ?? 0) / 100;
-    const item: CartItem = {
-      listingId: String(listing.id),
-      name: listing.name ?? "Untitled",
-      imageUrl: resolvedImageUrl ?? "",
-      unitPrice,
-      originalPrice: unitPrice,
-      quantity,
-      maxQuantity: listing.qty,
-    };
-    addItem(item);
+
+    //const effectiveUserId = userId ?? "temp-user-id";
+    const effectiveUserId =
+        userId ??
+        crypto.randomUUID(); //TODO CHANGE
+    //const pointsToUse = Math.max(0, pointsBalance);
+
+    setIsPurchasing(true);
+    try {
+      const response = await purchaseNow({
+        listing_id: listing.id,
+        user_id: effectiveUserId,
+        quantity,
+        //points: pointsToUse,
+        points: 700, //TODO GET ALL USER POINTS
+      });
+
+      if ("checkout_url" in response && response.checkout_url) {
+        window.location.assign(response.checkout_url);
+        return;
+      }
+
+      if ("status" in response) {
+        toast.success("Purchase successful", {
+          description: response.status,
+        });
+        return;
+      }
+
+      toast.error("Unexpected purchase response from server.");
+    } catch (error) {
+      console.error("Failed to purchase listing", error);
+      toast.error("Purchase failed. Please try again.");
+    } finally {
+      setIsPurchasing(false);
+    }
   }
 
   if (isLoading) {
@@ -212,17 +241,12 @@ export default function ListingDetail() {
               <Button
                 className="w-full gap-2"
                 size="lg"
-                disabled={isSoldOut}
-                onClick={handleAddToCart}
+                disabled={isSoldOut || isPurchasing}
+                onClick={handlePurchaseNow}
               >
                 <ShoppingBag className="h-5 w-5" />
-                {isSoldOut ? "Sold Out" : "Add to Cart"}
+                {isPurchasing ? "Processing..." : "Purchase Now"}
               </Button>
-              <Link to="/buyer/cart">
-                <Button variant="outline" className="w-full" size="lg">
-                  View Cart
-                </Button>
-              </Link>
             </CardContent>
           </Card>
         </div>
