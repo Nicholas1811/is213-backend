@@ -99,8 +99,8 @@ services:
       context: ./points-service
       dockerfile: Dockerfile
     container_name: point-service
-#    env_file:
-#      - ./point-service/.env
+    env_file:
+      - ./points-service/.env
     expose:
       - "8080"
     networks:
@@ -129,15 +129,22 @@ services:
     networks:
       - temporal-network
 
-  #  refund-service:
-  #    build:
-  #      context: ./Refund-service
-  #      dockerfile: Dockerfile
-  #    container_name: refund-service
-  ##    env_file:
-  ##      - ./Refund-service/.env
-  #    expose:
-  #      - "8080"
+  refund-service:
+    build:
+      context: ./Refund-service
+      dockerfile: Dockerfile
+    container_name: refund-service
+    # env_file:
+    #   - ./Refund-service/.env
+    expose:
+      - "8080"
+    networks:                 
+      - temporal-network
+      - default
+    depends_on:                
+      - temporal
+      - point-service
+      - payment-service
 
   purchase-worker:
     build:
@@ -151,19 +158,27 @@ services:
       - "8080"
     networks:
       - temporal-network
+    depends_on:
+      - temporal
+      - point-service
 
-#  refund-worker:
-#    build:
-#      context: ./Refund-service
-#      dockerfile: Dockerfile
-#    container_name: purchase-worker
-#    command: python -m worker.refund_worker
-#    #    env_file:
-#    #      - ./Refund-service/.env
-#    expose:
-#      - "8080"
-#    networks:
-#      - temporal-network
+  refund-worker:
+    build:
+      context: ./Refund-service
+      dockerfile: Dockerfile
+    container_name: refund-worker
+    command: python -m worker.refund_worker
+    restart: on-failure
+    #    env_file:
+    #      - ./Refund-service/.env
+    expose:
+      - "8080"
+    networks:
+      - temporal-network
+    depends_on:
+      - temporal
+      - point-service
+      - payment-service
 
 
 
@@ -193,6 +208,7 @@ services:
     container_name: temporal
     depends_on:
       - postgresql
+    restart: on-failure
     environment:
       - DB=postgres12
       - DB_PORT=5432
