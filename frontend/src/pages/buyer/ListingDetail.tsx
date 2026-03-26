@@ -62,18 +62,18 @@ export default function ListingDetail() {
   async function handlePurchaseNow() {
     if (!listing) return;
 
-    //const effectiveUserId = userId ?? "temp-user-id";
+    //const effectiveUserId = userId ?? "temp-user-id"; //TODO CHANGE
     const effectiveUserId =
         userId ??
         crypto.randomUUID(); //TODO CHANGE
-    //const pointsToUse = Math.max(0, pointsBalance);
+    //const pointsToUse = Math.max(0, pointsBalance); //TODO CHANGE
 
     setIsPurchasing(true);
     try {
       const response = await purchaseNow({
-        listing_id: listing.id,
-        user_id: effectiveUserId,
-        quantity,
+        listing_id: listing.id, //DONE
+        user_id: effectiveUserId, //TODO CHANGE
+        quantity, //DONE
         //points: pointsToUse,
         points: 10, //TODO GET ALL USER POINTS
       });
