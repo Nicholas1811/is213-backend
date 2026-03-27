@@ -95,10 +95,29 @@ services:
       context: ./points-service
       dockerfile: Dockerfile
     container_name: point-service
+    environment:
+      - RABBITMQ_HOST=rabbitmq
 #    env_file:
 #      - ./point-service/.env
     expose:
       - "8080"
+    networks:
+      - temporal-network
+      - default
+  point-worker:
+    build:
+      context: ./points-service
+      dockerfile: Dockerfile
+    container_name: point-worker
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+    command: python worker.py
+    restart: always
+    # env_file:
+    #   - ./points-service/.env
+    depends_on:
+      - rabbitmq
+      - point-service
     networks:
       - temporal-network
       - default

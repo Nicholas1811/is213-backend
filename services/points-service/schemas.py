@@ -30,3 +30,8 @@ class TransactionCreate(BaseModel):
             raise ValueError(f"Transaction type '{t_type}' must have a positive point value (e.g., 50)")
 
         return self
+    
+
+class PhotoProcessCreate(BaseModel):
+    user_id: UUID
+    before_image_url: str
