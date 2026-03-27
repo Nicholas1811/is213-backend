@@ -1,7 +1,47 @@
+from collections.abc import Awaitable, Callable
+import json
+
+from aio_pika import ExchangeType
+from aio_pika.abc import AbstractIncomingMessage
+
 from app.clients.rabbitmq_client import RabbitMQClient
-from app.messaging import publisher
+MessageHandler = Callable[[dict], Awaitable[None]]
 
 
 class Consumer:
-    def __init__(self, rabbitmq_client: RabbitMQClient, publisher: publisher) -> None:
-        return
+    def __init__(
+        self,
+        rabbitmq_client: RabbitMQClient,
+        queue_name: str,
+        exchange_name: str,
+        routing_key: str,
+        handler: MessageHandler,
+        exchange_type: ExchangeType = ExchangeType.TOPIC,
+    ) -> None:
+
+        self.rabbitmq_client = rabbitmq_client
+        self.queue_name = queue_name
+        self.exchange_name = exchange_name
+        self.routing_key = routing_key
+        self.handler = handler
+        self.exchange_type = exchange_type
+
+    async def start(self) -> None:
+        """Declare and bind the queue, then register the consumer into main"""
+
+        queue = await self.rabbitmq_client.declare_queue(self.queue_name)
+
+        await self.rabbitmq_client.bind_queue(
+            queue=queue,
+            exchange_name=self.exchange_name,
+            routing_key=self.routing_key,
+            exchange_type=self.exchange_type,
+        )
+
+        await queue.consume(self._handle_message)
+
+    async def _handle_message(self, message: AbstractIncomingMessage) -> None:
+
+        async with message.process(requeue=False):
+            payload = json.loads(message.body.decode("utf-8"))
+            await self.handler(payload)
