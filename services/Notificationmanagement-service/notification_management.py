@@ -37,6 +37,7 @@ def lambdaAuthenticate():
             scopes=scopes
         )
         credentials.refresh(Request())
+        print(credentials.token, flush=True)
         return credentials.token
 
     except Exception as err:
@@ -107,10 +108,12 @@ def pushNotificationWorkflow(event):
     ).notification_body()
     saved = addToNotifications(notification)
     if not saved:
+        raise Exception ("Unable to save notifications, please try again.")
         return
     authentication_result = lambdaAuthenticate()
     if not authentication_result:
         print("Authentication failed.")
+        raise Exception ("Authentication failed, cannot send notification.")
         return
 
     user_tokens = getCurrentUserTokens(event['userId'])
@@ -121,14 +124,14 @@ def pushNotificationWorkflow(event):
             event,
             authentication_result
         )
-
+        print(information, " gathered information at line 125.", flush=True)
         if information:
             response = requests.post(
                 information['fcm_url'],
                 headers=information['headers'],
                 data=json.dumps(information['payload'])
             )
-            print(response.status_code, response.text)
+            print(response.status_code, response.text, " response from FCM", flush=True)
 
 def event_dictionary(event):
     eventKey = event['key']

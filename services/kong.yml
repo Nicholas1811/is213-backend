@@ -8,6 +8,11 @@ services:
       - name: payment-route
         paths:
           - /payment
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
 
   - name: keycloak-auth
     url: http://keycloak-esd:8080
@@ -24,11 +29,12 @@ services:
           - /users
 
   - name: listing-service
-    url: http://listing-service:9999
+    url: http://listing-service:8080
     routes:
       - name: listing-route
         paths:
           - /listings
+        strip_path: false
     plugins:
       - name: rate-limiting
         config:
@@ -81,6 +87,22 @@ services:
     connect_timeout: 60000
     read_timeout: 120000
     write_timeout: 60000
+
+  - name: refund-service
+    url: http://refund-service:8080
+    routes:
+      - name: refund-route
+        paths:
+          - /refund
+    plugins:
+        - name: rate-limiting
+          config:
+            minute: 20
+            policy: local
+    connect_timeout: 60000
+    read_timeout: 120000
+    write_timeout: 60000
+    
 plugins:
   - name: cors
     config:
@@ -101,5 +123,7 @@ plugins:
         - Authorization
       credentials: true
       max_age: 36000
+
+
 
   ## should be dont need for notification for a route, this one should be handled internally.

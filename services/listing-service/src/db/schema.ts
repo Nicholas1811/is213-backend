@@ -30,7 +30,7 @@ export const listings = pgTable("listings", {
   id: integer("id")
     .generatedAlwaysAsIdentity()
     .primaryKey(),
-  s3ImageUrl: text("s3_image_url"),
+  imageUrl: text("s3_image_url"),
   name: varchar("name", { length: 255 }),
   description: text("description"),
   qty: integer("qty")
@@ -48,7 +48,6 @@ export const selectListingsSchema = createSelectSchema(listings);
 
 export const insertListingsSchema = createInsertSchema(listings)
   .omit({
-    s3ImageUrl: true,
     name: true,
     description: true,
     qty: true,

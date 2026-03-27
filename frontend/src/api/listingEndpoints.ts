@@ -2,6 +2,11 @@ import apiClient from "@/api/client";
 import { ENDPOINTS } from "@/api/endpoints";
 import type { CreateListingRequest, Listing } from "@/api/types/listing";
 
+export async function batchCreateListings(imageUrls: string[]): Promise<Listing[]> {
+  const response = await apiClient.post<Listing[]>(ENDPOINTS.CREATE_LISTING, { imageUrls });
+  return response.data;
+}
+
 export type ListingStatus = Listing["status"];
 
 export interface GetListingsQuery {
