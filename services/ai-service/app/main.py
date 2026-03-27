@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from app.clients.rabbitmq_client import RabbitMQClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -11,15 +12,13 @@ logging.basicConfig(
 logger = logging.getLogger("ai-service")
 
 
-async def run_worker() -> None:
-    logger.info("AI worker starting")
-
-    while True:  # tells the worker to to stay alive forever!
-        await asyncio.sleep(60)
-
-
 async def main() -> None:
-    await run_worker()
+    logger.info("Starting main")
+    rabbitmq_client = RabbitMQClient()
+    await rabbitmq_client.connect()
+
+    logger.info("RabbitMQ connection is done")
+    await asyncio.Future()
 
 
 if __name__ == "__main__":
