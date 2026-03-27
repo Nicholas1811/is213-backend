@@ -15,10 +15,10 @@ services:
 
   mock_producer:
     build: ./mock-producer
-#    expose:
-#      - "8080"
+    #    expose:
+    #      - "8080"
     ports:
-        - "9000:8080"
+      - "9000:8080"
     depends_on:
       - rabbitmq
 
@@ -112,18 +112,20 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: ai-service
-#    env_file:
-#      - ./ai-service/.env
+    #    env_file:
+    #      - ./ai-service/.env
     expose:
       - "8080"
+    depends_on:
+      - rabbitmq
 
   purchase-product-service:
     build:
       context: ./PurchasedListing-service
       dockerfile: Dockerfile
     container_name: purchase-product-service
-#    env_file:
-#      - ./PurchasedListing-service/.env
+    #    env_file:
+    #      - ./PurchasedListing-service/.env
     expose:
       - "8080"
     networks:
@@ -152,8 +154,8 @@ services:
       dockerfile: Dockerfile
     container_name: purchase-worker
     command: python -m worker.purchase_worker
-#    env_file:
-#      - ./Refund-service/.env
+    #    env_file:
+    #      - ./Refund-service/.env
     expose:
       - "8080"
     networks:
@@ -250,31 +252,31 @@ services:
     ports:
       - 8090:8080 # use 8090 to avoid conflict with other services
 
-## == KONG API GATEWAY ==
+  ## == KONG API GATEWAY ==
   kong:
-      image: kong:latest # Kong Gateway image (default to latest version)
-      container_name: kong-api-gateway
-      volumes:
-        - ./kong.yml:/usr/local/kong/declarative/kong.yml  
-      environment:
-        KONG_DATABASE: off
-        KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml  
-        KONG_PROXY_ACCESS_LOG: /dev/stdout
-        KONG_ADMIN_ACCESS_LOG: /dev/stdout
-        KONG_PROXY_ERROR_LOG: /dev/stderr
-        KONG_ADMIN_ERROR_LOG: /dev/stderr
-        KONG_ADMIN_LISTEN: 0.0.0.0:8001
-        KONG_ADMIN_GUI_URL: http://localhost:8002
-      ports:
-        - "8000:8000"
-        - "8443:8443"
-        - "8001:8001"
-        - "8444:8444"
-        - "8002:8002"
-        - "8445:8445"
-        - "8003:8003"
-        - "8004:8004"
-      depends_on: # all exposed services to be declared here and kong.yml
+    image: kong:latest # Kong Gateway image (default to latest version)
+    container_name: kong-api-gateway
+    volumes:
+      - ./kong.yml:/usr/local/kong/declarative/kong.yml
+    environment:
+      KONG_DATABASE: off
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_ADMIN_GUI_URL: http://localhost:8002
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+      - "8001:8001"
+      - "8444:8444"
+      - "8002:8002"
+      - "8445:8445"
+      - "8003:8003"
+      - "8004:8004"
+    depends_on: # all exposed services to be declared here and kong.yml
       - payment-service
       - keycloak-esd
       - user-service
@@ -282,9 +284,9 @@ services:
       - listing-service
       - point-service
       - purchase-product-service
-      networks:
-        - default
-        - temporal-network
+    networks:
+      - default
+      - temporal-network
 networks:
   temporal-network:
     driver: bridge
