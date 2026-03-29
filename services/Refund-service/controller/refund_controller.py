@@ -24,7 +24,7 @@ def process_refund():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return {"error": "Request body must be a JSON object"}, 400
-    required_fields = ["order_id", "user_id", "point_id", "points_amount", "payment_id", "refund_amount"]
+    required_fields = ["order_id", "user_id", "points_amount", "payment_intent_id"]
     missing = [field for field in required_fields if data.get(field) in (None, "")]
     if missing:
         return {"error": f"Missing required fields: {', '.join(missing)}"}, 400

@@ -2,7 +2,7 @@ import requests
 from temporalio import activity
 
 @activity.defn
-async def restore_points(data):
+def restore_points(data):
     response = requests.post(
         "http://point-service:8080/points/transaction",
         json={
@@ -18,7 +18,7 @@ async def restore_points(data):
     return response.json()
 
 @activity.defn
-async def deduct_points_compensation(data):
+def deduct_points_compensation(data):
     response = requests.post(
         "http://point-service:8080/points/transaction",
         json={

@@ -36,6 +36,7 @@ services:
           policy: local
       - name: proxy-cache
         config:
+          strategy: memory
           request_method:
             - GET
           content_type:
@@ -77,5 +78,15 @@ services:
           config:
             minute: 20
             policy: local
+
+  - name: refund-service
+    url: http://refund-service:8080
+    routes:
+      - name: refund-route
+        paths:
+          - /refund
+    connect_timeout: 60000
+    read_timeout: 120000
+    write_timeout: 60000
 
   ## should be dont need for notification for a route, this one should be handled internally.

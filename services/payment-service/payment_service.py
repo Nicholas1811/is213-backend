@@ -46,6 +46,19 @@ async def process_payment(checkout_request: CheckoutRequest):
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+class RefundRequest(BaseModel):
+    payment_intent_id: str
+
+@router.post("/refund")
+async def refund_payment(refund_request: RefundRequest):
+    try:
+        refund = stripe.Refund.create(
+            payment_intent=refund_request.payment_intent_id
+        )
+        return {"refund_id": refund.id, "status": refund.status}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/test")
 async def testRoute():
     return {"message": "testing payment"}

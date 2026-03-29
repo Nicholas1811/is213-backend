@@ -108,8 +108,8 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: ai-service
-#    env_file:
-#      - ./ai-service/.env
+    env_file:
+     - ./ai-service/.env
     expose:
       - "8080"
 
@@ -127,15 +127,30 @@ services:
       - temporal-network
       - default
 
-#  refund-service:
-#    build:
-#      context: ./Refund-service
-#      dockerfile: Dockerfile
-#    container_name: refund-service
-##    env_file:
-##      - ./Refund-service/.env
-#    expose:
-#      - "8080"
+  refund-service:
+    build:
+      context: ./Refund-service
+      dockerfile: Dockerfile
+    container_name: refund-service
+    expose:
+      - "8080"
+    networks:                 
+      - temporal-network
+      - default
+
+  refund-worker:
+    build:
+      context: ./Refund-service
+      dockerfile: Dockerfile
+    container_name: refund-worker
+    command: python -m worker.refund_worker
+    restart: on-failure
+    expose:
+      - "8080"
+    networks:
+      - temporal-network
+    depends_on:
+      - temporal
 
   purchase-worker:
     build:
@@ -246,6 +261,10 @@ services:
       - listing-service
       - point-service
       - purchase-product-service
+      - refund-service
+    networks:
+      - default
+      - temporal-network
 networks:
   temporal-network:
     driver: bridge
