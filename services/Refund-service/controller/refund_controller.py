@@ -19,7 +19,7 @@ async def connect_temporal():
 
 asyncio.run(connect_temporal())
 
-@app.route("/refund/process", methods=["POST"])
+@app.route("/process", methods=["POST"])
 def process_refund():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
