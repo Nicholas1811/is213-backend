@@ -32,15 +32,6 @@ class CheckoutRequest(BaseModel):
     quantity_to_update: int
     points_changed: int
 
-class RefundRequest(BaseModel):
-    payment_intent_id: str
-
-    #check with db - to be implemented
-    @field_validator('payment_intent_id')
-    def checkPaymentId(cls, v):
-        if not v:
-            raise ValueError("Payment Intent ID must be provided")
-        return v
 
 @router.post("/process-payment")
 async def process_payment(checkout_request: CheckoutRequest):
@@ -111,6 +102,15 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     return {"status": "success"}
 
+class RefundRequest(BaseModel):
+    payment_intent_id: str
+
+    #check with db - to be implemented
+    @field_validator('payment_intent_id')
+    def checkPaymentId(cls, v):
+        if not v:
+            raise ValueError("Payment Intent ID must be provided")
+        return v
 
 @router.post("/refund")
 async def refund_payment(refund_request: RefundRequest):
