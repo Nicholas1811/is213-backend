@@ -9,18 +9,19 @@ with workflow.unsafe.imports_passed_through():
     from activities.get_listing_price import purchase_listing, reset_listing
     from activities.point_activity import use_points, refund_points
     from activities.payment_activity import charge_payment #, refund_payment
-    from activities.order_creation import create_order, cancel_order, update_order_status
+    from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId
 
 retry_policy = RetryPolicy(
     initial_interval=timedelta(seconds=2),
     maximum_attempts=5,
 )
-sample_order_ref = str(workflow.uuid4())
+
 
 @workflow.defn
 class PurchaseWorkflow:
     @workflow.run
     async def run(self, data):
+        sample_order_ref = str(workflow.uuid4())
         compensations = []
         order_ref = str(workflow.uuid4())
         order_id = None
@@ -92,6 +93,7 @@ class PurchaseWorkflow:
             enum_for_order = "PAID"
             if(remaining > 0):
                 enum_for_order = "PENDING"
+
             order = await workflow.execute_activity(
                 create_order,
                 {
@@ -106,14 +108,14 @@ class PurchaseWorkflow:
                 start_to_close_timeout=timedelta(seconds=10),
                 retry_policy=retry_policy
             )
+            ##TODO NIC: Update the point endpoint to have the referenceID usingthe orderID.
             print(order_id)
             order_id = order["id"]
+
             ##Crash safe
             compensations.append(
                 ("cancel_order", {"order_id": order_id})
             )
-
-
             payment_id = None
             ## If points is not enough, means we pay more.
             ## You might need more details for the charge payment.
@@ -136,15 +138,27 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
+                ##TODO NIC: Update the payment_id in order to have the paymentID.
+                order_update = await workflow.execute_activity(
+                    update_order_paymentId,
+                    {
+                        "order_id": order_id,
+                        "payment_id": payment_id['checkout_id']
+                    },
+                    start_to_close_timeout=timedelta(seconds=10),
+                    retry_policy=retry_policy)
+                print(order_update, flush=True)
                 return payment_id
             else:
                 await workflow.execute_activity(
                     update_order_status,
-                    order_id,
+                    {
+                        "order_id": order_id
+                    },
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
-                return {"status": "order created, point fully paid"}
+                return {"status": "Order created, Paid fully using points!"}
 
         except Exception as e:
             workflow.logger.error("Workflow failed, running compensations")

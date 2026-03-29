@@ -1,26 +1,36 @@
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 import stripe
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import os
-
-# store details from UI into db to create a payment databse entry
-# get price from listing (return price * (price * qty))
-# get points from userId - perform point verification logic here
-    # if have, 201 created row info in payment   
-# calculate remaining price from previous step
-# if total > 0, call stripe payment
-# successful order then populate order db and send message to notification service
-    # notification.success topic
+from sqlalchemy.orm import Session
+from db_actions.model import Payment
+from db_actions.service import create_payment, get_payment_by_id
+from db_actions.db import SessionLocal, engine, Base
+from datetime import datetime
 
 app = FastAPI()
-router = APIRouter(prefix="/payment")
+router = APIRouter()
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+stripe.webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
-# stuff to pass in to payment processing
+# set up db
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# stuff to pass in to payment processing - to check with db
 class CheckoutRequest(BaseModel):
     user_id: str
     price: int
-    qty: int
+    listing_id: int
+    order_id: int
+    quantity_to_update: int
+    points_changed: int
 
 
 @router.post("/process-payment")
@@ -36,18 +46,71 @@ async def process_payment(checkout_request: CheckoutRequest):
                     },
                     "unit_amount": checkout_request.price,
                 },
-                "quantity": checkout_request.qty,
+                "quantity": checkout_request.quantity_to_update,
             }],
             mode="payment",
-            success_url="https://localhost:8000/payment/payment-success",
-            cancel_url="https://localhost:8000/payment/payment-failed",
+            success_url="http://localhost:8000/payment/payment-success?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url="http://localhost:8000/payment/payment-failed",
+            metadata={
+                "user_id": checkout_request.user_id,
+                "price": checkout_request.price,
+                "listing_id": checkout_request.listing_id,
+                "quantity": checkout_request.quantity_to_update,
+                "points_changed": checkout_request.points_changed,
+                "order_id": checkout_request.order_id
+            }
         )
         return {"checkout_url": checkout_session.url, "checkout_id" : checkout_session.id}
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@router.post("/webhook")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature')
+    try:
+        # Verify webhook signature. This ensures the call really comes from Stripe
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, stripe.webhook_secret
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        
+        payment_stripe_id = session.get("id")
+        payment_intent_id = session.get("payment_intent")
+        metadata = session.get("metadata", {})
+
+        new_payment = Payment(
+                payment_stripe_id=payment_stripe_id,
+                user_id=metadata.get("user_id"),
+                payment_intent_id=payment_intent_id,
+                listing_id=int(metadata.get("listing_id", 0)),
+                quantity=int(metadata.get("quantity", 0)),
+                payment_created=datetime.now(),
+                payment_updated=datetime.now()
+            )
+        
+        try:
+            create_payment(payment_data=new_payment, db=db)
+        except Exception as e:
+            print(e)
+
+    return {"status": "success"}
 
 class RefundRequest(BaseModel):
     payment_intent_id: str
+
+    #check with db - to be implemented
+    @field_validator('payment_intent_id')
+    def checkPaymentId(cls, v):
+        if not v:
+            raise ValueError("Payment Intent ID must be provided")
+        return v
 
 @router.post("/refund")
 async def refund_payment(refund_request: RefundRequest):
@@ -59,15 +122,15 @@ async def refund_payment(refund_request: RefundRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+# test routes for payment success/fail - to send event to msg broker
 @router.get("/test")
 async def testRoute():
     return {"message": "testing payment"}
 
-# test routes for payment success/fail - to send event to msg broker
 @router.get('/payment-success')
-async def payment_success():
+async def payment_success(session_id: str):
     try:
-        session = stripe.checkout.Session.retrieve()
+        session = stripe.checkout.Session.retrieve(session_id)
         if session.payment_status == "paid":
             return {"message": "Payment successful!"}
     except Exception:

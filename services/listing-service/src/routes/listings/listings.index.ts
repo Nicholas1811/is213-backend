@@ -5,9 +5,6 @@ import * as routes from "./listings.routes";
 
 const router = createRouter()
   .openapi(routes.list, handlers.list)
-  .openapi(routes.uploadUrl, handlers.uploadUrl)
-  .openapi(routes.uploadUrls, handlers.uploadUrls)
-  .openapi(routes.completeUploads, handlers.completeUploads)
   .openapi(routes.create, handlers.create)
   .openapi(routes.getOne, handlers.getOne)
   .openapi(routes.patch, handlers.patch)

@@ -33,7 +33,13 @@ export const ENDPOINTS = {
 
   // Payment Service
   PAYMENTS: `${API_GATEWAY_BASE}/payments`,
+  PURCHASE: `${API_GATEWAY_BASE}/purchases/purchase`,
 
   // Auth / User
   USER_PROFILE: `${API_GATEWAY_BASE}/user-auth/profile`,
+
+  // Notifications
+  NOTIFICATION_TOKENS: "https://personal-fsn5aajc.outsystemscloud.com/NotificationTokenService/rest/NotificationTokens/notificationtokens",
+  USER_NOTIFICATIONS: (userId: string) =>
+    `https://personal-fsn5aajc.outsystemscloud.com/NotificationService/rest/Notifications/usernotifications?userId=${encodeURIComponent(userId)}`,
 } as const;

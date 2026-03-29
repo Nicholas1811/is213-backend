@@ -2,7 +2,7 @@ import { z } from "zod";
 import { selectListingsSchema } from "@/db/schema";
 
 export const listingEventNameSchema = z.enum([
-  "listing.uploaded", // After listing image is uploaded to S3 -> AI will consume to process the listing
+  "listing.uploaded", // After listing is created -> AI will consume to process the listing
   "listing.processed", // After AI finish processing, listing will consume to update listing information
   "listing.purchased", // After listing is purchased, notification will consume to alert company
   "listing.restocked", // After listing is restocked, notification will consume to alert company

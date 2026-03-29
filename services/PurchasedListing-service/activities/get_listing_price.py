@@ -11,26 +11,26 @@ import requests
 async def purchase_listing(data):
     listing_id = data['listing_id']
     r = requests.post(
-        f"http://host.docker.internal:9999/listings/{listing_id}/purchase",
+        f"http://listing-service:8080/listings/{listing_id}/purchase",
         json={
             "qty" : data['qty']
         }
     )
     print("Status code is" , r.status_code)
-    print("Data is" , data.json())
+    print("Data is" , r.json())
     if(r.status_code >= 400 or r.status_code >= 500):
         raise Exception("Failed to reserve listing")
-    return data.json()
+    return r.json()
 
 @activity.defn
 async def reset_listing(data):
     listing_id = data['listing_id']
     r = requests.post(
-        f"http://host.docker.internal:9999/listings/{listing_id}/restock",
+        f"http://listing-service:8080/listings/{listing_id}/restock",
         json={
             "qty" : data['qty']
         }
     )
     if(r.status_code >= 400 or r.status_code >= 500):
         raise Exception("Failed to reserve listing")
-    return data.json()
+    return r.json()
