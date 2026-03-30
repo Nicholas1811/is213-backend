@@ -109,8 +109,6 @@ class PurchaseWorkflow:
                 retry_policy=retry_policy
             )
             order_id = order["id"]
-            ##TODO NIC: Update the point endpoint to have the referenceID using the orderID.
-            print(order_id)
             if(points_to_use > 0):
                 update_point = await workflow.execute_activity(
                     updatePointWithOrderId,
