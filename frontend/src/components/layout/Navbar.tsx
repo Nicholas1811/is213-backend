@@ -16,14 +16,28 @@ import { useNotificationStore } from "@/store/notificationStore";
 import { APP_SHORT_NAME, UserRole } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { registerNotificationToken } from "@/services/notificationService";
+import { useKeycloak } from "@react-keycloak/web";
+import { useAuthStore } from "@/store/authStore";
+import { isKeycloakConfigured } from "@/lib/keycloak";
 
 export default function Navbar() {
   const location = useLocation();
 
-  // ✅ MOCK USER (replace later with auth)
-  const [role] = useState<UserRole>(UserRole.BUYER); // 🔁 change to SELLER to test
-  const userId = "temp-user-id"; //TODO CHANGE OVER HERE TO GET VIA KEYCLOAK
-  const userName = "Guest";
+  const { keycloak } = useKeycloak();
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+
+  // Authenticated state from Keycloak
+  const userId = keycloak.subject || "temp-user-id";
+  const userName = (keycloak.tokenParsed as any)?.name || (keycloak.tokenParsed as any)?.preferred_username || "Guest";
+  
+  // Determine role from Keycloak realm roles
+  const isKeycloakBuyer = keycloak.hasRealmRole("buyer");
+  const isKeycloakSeller = keycloak.hasRealmRole("seller");
+  const role = isKeycloakBuyer 
+    ? UserRole.BUYER 
+    : isKeycloakSeller 
+      ? UserRole.SELLER 
+      : "unknown";
 
   const itemCount = useCartStore((s) => s.getItemCount());
   const balance = usePointsStore((s) => s.balance);
@@ -55,6 +69,13 @@ export default function Navbar() {
     } finally {
       setIsNotificationLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    if (isKeycloakConfigured) {
+      void keycloak.logout({ redirectUri: window.location.origin });
+    }
+    clearAuth();
   };
 
   const formatReceivedAt = (isoString: string) => {
@@ -238,12 +259,10 @@ export default function Navbar() {
 
               <DropdownMenuSeparator />
 
-              {/* Mock logout */}
+              {/* Real logout */}
               <DropdownMenuItem
                 className="cursor-pointer text-destructive"
-                onClick={() => {
-                  alert("Logout (mock)");
-                }}
+                onClick={handleLogout}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Logout
