@@ -10,8 +10,7 @@ export default function HomePage() {
 
   function handleRoleSelect(role: UserRole) {
     setRole(role);
-    // In production, this would trigger Keycloak login with the correct realm
-    // For now, navigate directly to the role's dashboard
+    // Navigation is protected by ProtectedRoute in router.tsx
     navigate(role === UserRole.BUYER ? "/buyer" : "/seller");
   }
 

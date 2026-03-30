@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import BuyerLayout from "@/components/layout/BuyerLayout";
 import SellerLayout from "@/components/layout/SellerLayout";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import HomePage from "@/pages/HomePage";
 import BuyerHome from "@/pages/buyer/BuyerHome";
 import Marketplace from "@/pages/buyer/Marketplace";
@@ -30,7 +31,11 @@ export const router = createBrowserRouter([
       // Buyer routes
       {
         path: "buyer",
-        element: <BuyerLayout />,
+        element: (
+          <ProtectedRoute>
+            <BuyerLayout />
+          </ProtectedRoute>
+        ),
         children: [
           {
             index: true,
@@ -73,7 +78,11 @@ export const router = createBrowserRouter([
       // Seller routes
       {
         path: "seller",
-        element: <SellerLayout />,
+        element: (
+          <ProtectedRoute>
+            <SellerLayout />
+          </ProtectedRoute>
+        ),
         children: [
           {
             index: true,
