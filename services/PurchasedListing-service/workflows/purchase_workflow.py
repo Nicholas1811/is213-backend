@@ -188,25 +188,29 @@ class PurchaseWorkflow:
 
             for action, payload in reversed(compensations):
                 ## Must check over here.
-                if action == "cancel_order":
-                    await workflow.execute_activity(
-                        cancel_order,
-                        payload,
-                        start_to_close_timeout=timedelta(seconds=10)
-                    )
+                try:
+                    if action == "cancel_order":
+                        await workflow.execute_activity(
+                            cancel_order,
+                            payload,
+                            start_to_close_timeout=timedelta(seconds=10)
+                        )
 
-                elif action == "refund_points":
-                    await workflow.execute_activity(
-                        refund_points,
-                        payload,
-                        start_to_close_timeout=timedelta(seconds=10)
-                    )
+                    elif action == "refund_points":
+                        await workflow.execute_activity(
+                            refund_points,
+                            payload,
+                            start_to_close_timeout=timedelta(seconds=10)
+                        )
 
-                elif action == "reset_listing":
-                    await workflow.execute_activity(
-                        reset_listing,
-                        payload,
-                        start_to_close_timeout=timedelta(seconds=10)
-                    )
+                    elif action == "reset_listing":
+                        await workflow.execute_activity(
+                            reset_listing,
+                            payload,
+                            start_to_close_timeout=timedelta(seconds=10)
+                        )
+
+                except Exception as comp_err:
+                    workflow.logger.error(f"Compensation failed for {action}: {comp_err}")
 
             raise
