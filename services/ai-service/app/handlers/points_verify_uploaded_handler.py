@@ -19,6 +19,6 @@ class PointsVerifyUploadHandler:
 
         response = await self.points_verification_service.process(incoming_message)
 
-        await self.publisher.publish(
+        await self.publisher.publish("",
             AI_RESULT_ROUTING_KEY, response.model_dump(by_alias=True)
         )

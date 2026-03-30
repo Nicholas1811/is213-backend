@@ -8,7 +8,7 @@ import uuid
 async def use_points(data):
     print(data, flush=True)
     r = requests.post(
-        "http://point-service:8080/points/transaction",
+        "http://point-service:8080/transaction",
         json={
             "user_id": data['user_id'],
             "points_changed": data['points_changed'] * -1,
@@ -23,7 +23,7 @@ async def use_points(data):
 @activity.defn
 async def refund_points(data):
     r = requests.post(
-        "http://point-service:8080/points/transaction",
+        "http://point-service:8080/transaction",
         json={
             "user_id": data['user_id'],
             "points_changed": data['points_changed'],

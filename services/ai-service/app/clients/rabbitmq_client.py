@@ -40,6 +40,9 @@ class RabbitMQClient:
         exchange_type: ExchangeType = ExchangeType.TOPIC,
     ) -> AbstractExchange:
         """Return a declared exchange, creating it on first use."""
+        if not exchange_name:
+            return self.channel.default_exchange
+
         if self.channel is None:
             raise RuntimeError("RABBITMQ channel is not initialized")
 
@@ -89,6 +92,8 @@ class RabbitMQClient:
         Raises:
             RuntimeError: If the exchange is not initialized
         """
+        if not exchange_name:
+            return
         exchange = await self.get_exchange(exchange_name, exchange_type)
         await queue.bind(exchange, routing_key=routing_key)
 

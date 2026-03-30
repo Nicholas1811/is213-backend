@@ -17,7 +17,7 @@ def publish_to_ai(user_id, trans_id , before_url, after_url):
     connection = connect_rabbit()
     channel = connection.channel()
     
-    channel.queue_declare(queue=AI_TASK_QUEUE)
+    channel.queue_declare(queue=AI_TASK_QUEUE, durable=True)
     
     payload = {
         "user_id": str(user_id),

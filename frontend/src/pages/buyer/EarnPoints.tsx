@@ -1,35 +1,140 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Camera, Check, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import CameraCapture from "@/components/camera/CameraCapture";
 import { POINTS_PER_MEAL_PHOTO } from "@/lib/constants";
+import {
+  createPhotoProcess,
+  getPhotoStatus,
+  submitMealPhotos,
+  uploadAfterMealPhoto,
+  uploadBeforeMealPhoto
+} from "@/api/pointsEndpoints";
+import {uploadImageToS3, fetchImageUrl} from "@/api/s3";
 
 type Step = "before" | "after" | "submitted";
 
 export default function EarnPoints() {
   const [step, setStep] = useState<Step>("before");
-  const [_beforePhoto, setBeforePhoto] = useState<Blob | null>(null);
-  const [_afterPhoto, setAfterPhoto] = useState<Blob | null>(null);
+  const [beforePhoto, setBeforePhoto] = useState<Blob | null>(null);
+  const [afterPhoto, setAfterPhoto] = useState<Blob | null>(null);
+  const [isUploadingBefore, setIsUploadingBefore] = useState(false);
+  const [beforeUploadError, setBeforeUploadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+
+  // async function handleBeforeUpload() {
+  //   const file = new File([beforePhoto], "before.jpg", { type: beforePhoto.type });
+  //   if (!beforePhoto) {
+  //     setBeforeUploadError("Capture your before photo first.");
+  //     return;
+  //   }
+  //
+  //   setIsUploadingBefore(true);
+  //   setBeforeUploadError(null);
+  //
+  //   try {
+  //     await uploadImageToS3(beforePhoto);
+  //
+  //     await uploadBeforeMealPhoto(beforePhoto);
+  //     setStep("after");
+  //   } catch (error) {
+  //     console.error("Failed to upload before photo", error);
+  //     setBeforeUploadError("Could not upload before photo. Please try again.");
+  //   } finally {
+  //     setIsUploadingBefore(false);
+  //   }
+  // }
+  async function handleBeforeUpload() {
+    if (!beforePhoto) {
+      setBeforeUploadError("Capture your before photo first.");
+      return;
+    }
+
+    setIsUploadingBefore(true);
+    setBeforeUploadError(null);
+
+    try {
+      const file = new File([beforePhoto], "before.jpg", { type: beforePhoto.type });
+
+      const key = await uploadImageToS3(file);
+      const fileURL = await fetchImageUrl(key);
+      const photoProcess = await createPhotoProcess(fileURL);
+      setTransactionId(photoProcess.id);
+      console.log("S3 upload success, key:", key);
+      console.log(fileURL);
+
+      setStep("after"); // move to next step
+    } catch (error) {
+      console.error("Failed to upload before photo", error);
+      setBeforeUploadError("Could not upload before photo. Please try again.");
+    } finally {
+      setIsUploadingBefore(false);
+    }
+  }
 
   async function handleSubmit(afterBlob: Blob) {
+    if (!beforePhoto || !transactionId) {
+      setBeforeUploadError("Missing transaction. Please restart.");
+      setStep("before");
+      return;
+    }
+
     setAfterPhoto(afterBlob);
     setIsSubmitting(true);
 
-    // TODO: Replace with actual API call to points-service
-    // await submitMealPhotos({ beforePhoto, afterPhoto: afterBlob })
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate API call
+    try {
+      const file = new File([afterBlob], "after.jpg", { type: afterBlob.type });
 
-    setIsSubmitting(false);
-    setStep("submitted");
+      const key = await uploadImageToS3(file);
+      const afterUrl = await fetchImageUrl(key);
+
+      console.log("After URL:", afterUrl);
+
+      await uploadAfterMealPhoto(transactionId, afterUrl);
+
+      setStep("processing");
+    } catch (error) {
+      console.error("Failed to submit after photo", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleReset() {
     setStep("before");
     setBeforePhoto(null);
     setAfterPhoto(null);
+    setBeforeUploadError(null);
   }
+
+  useEffect(() => {
+    if (step !== "processing" || !transactionId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await getPhotoStatus(transactionId);
+
+        console.log("Polling status:", res.status);
+
+        if (res.status === "awarded") {
+          setStep("submitted");
+          clearInterval(interval);
+        }
+
+        if (res.status === "rejected") {
+          // optional: show rejection UI
+          clearInterval(interval);
+        }
+
+      } catch (err) {
+        console.error("Polling error", err);
+      }
+    }, 3000); // every 3s
+
+    return () => clearInterval(interval);
+  }, [step, transactionId]);
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -78,17 +183,29 @@ export default function EarnPoints() {
             <Camera className="mx-auto h-8 w-8 text-primary mb-2" />
             <CardTitle>Before Your Meal</CardTitle>
             <CardDescription>
-              Take a photo of your meal before you start eating. Make sure to capture the full plate!
+              Take a photo of your meal before you start eating. Then upload it to continue.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <CameraCapture
               label="Capture your meal before eating"
               onCapture={(blob) => {
                 setBeforePhoto(blob);
-                setStep("after");
+                setBeforeUploadError(null);
               }}
             />
+
+            <Button
+              onClick={handleBeforeUpload}
+              disabled={!beforePhoto || isUploadingBefore}
+              className="w-full"
+            >
+              {isUploadingBefore ? "Uploading before photo..." : "Upload Before Photo"}
+            </Button>
+
+            {beforeUploadError && (
+              <p className="text-sm text-destructive text-center">{beforeUploadError}</p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -138,6 +255,62 @@ export default function EarnPoints() {
           </CardContent>
         </Card>
       )}
+
+      {step === "processing" && (
+          <Card className="border-primary/50">
+            <CardContent className="pt-8 pb-8 text-center space-y-4">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 animate-pulse">
+                <Coins className="h-8 w-8 text-primary" />
+              </div>
+
+              <h2 className="text-2xl font-bold">Processing Your Meal...</h2>
+
+              <p className="text-muted-foreground">
+                We are verifying your meal photos. This may take a few moments.
+              </p>
+
+              <p className="text-sm text-muted-foreground animate-pulse">
+                AI is analyzing your submission...
+              </p>
+            </CardContent>
+          </Card>
+      )}
+
+      {step === "rejected" && (
+          <Card className="border-destructive/50">
+            <CardContent className="pt-8 pb-8 text-center space-y-4">
+
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+                <Camera className="h-8 w-8 text-destructive" />
+              </div>
+
+              <h2 className="text-2xl font-bold text-destructive">
+                Submission Not Approved
+              </h2>
+
+              <p className="text-muted-foreground">
+                We couldn’t verify that the meal was completed successfully.
+              </p>
+
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>• The meal may not be fully finished</p>
+                <p>• The before and after photos may not match</p>
+                <p>• The result was unclear</p>
+              </div>
+
+              <Button onClick={handleReset} className="gap-2 mt-2">
+                <Camera className="h-4 w-4" />
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+      )}
+
+      {afterPhoto && step === "submitted" && (
+        <p className="text-center text-xs text-muted-foreground">After photo captured successfully.</p>
+      )}
+
+
     </div>
   );
 }

@@ -17,6 +17,17 @@ export interface SubmitMealPhotosRequest {
   afterPhoto: Blob;
 }
 
+export interface UploadBeforePhotoResponse {
+  uploadId: string;
+  status: "uploaded" | "failed";
+  uploadedAt: string;
+}
+
+export interface SubmitMealPhotosResponse {
+  status: "submitted" | "failed";
+  pointsAwarded: number;
+}
+
 export interface RedeemPointsRequest {
   points: number;
   orderId: string;
