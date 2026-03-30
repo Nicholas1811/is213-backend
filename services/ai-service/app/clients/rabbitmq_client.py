@@ -11,6 +11,8 @@ from aio_pika.abc import (
 
 from app.config import RABBITMQ_PREFETCH, RABBITMQ_URL
 
+logger = logging.getLogger(__name__)
+
 
 class RabbitMQClient:
     """Manages the shared RabbitMQ connection, channel, and exchanges."""
@@ -30,7 +32,7 @@ class RabbitMQClient:
             return
 
         self.connection = await aio_pika.connect_robust(self.url)
-        logging.info("Connected to RabbitMQ")
+        logger.info("Connected to RabbitMQ")
         self.channel = await self.connection.channel()
         await self.channel.set_qos(prefetch_count=RABBITMQ_PREFETCH)
 
@@ -43,6 +45,9 @@ class RabbitMQClient:
         if self.channel is None:
             raise RuntimeError("RABBITMQ channel is not initialized")
 
+        if not exchange_name:
+            return self.channel.default_exchange
+
         exchange = self.exchanges.get(exchange_name)
         if exchange is not None:
             return exchange
@@ -53,6 +58,7 @@ class RabbitMQClient:
             durable=True,
         )
         self.exchanges[exchange_name] = exchange
+        logger.info("Declared exchange exchange_name=%s", exchange_name)
         return exchange
 
     async def declare_queue(self, queue_name: str) -> AbstractQueue:
@@ -89,8 +95,16 @@ class RabbitMQClient:
         Raises:
             RuntimeError: If the exchange is not initialized
         """
+        if not exchange_name:
+            return
         exchange = await self.get_exchange(exchange_name, exchange_type)
         await queue.bind(exchange, routing_key=routing_key)
+        logger.info(
+            "Bound queue queue_name=%s exchange_name=%s routing_key=%s",
+            queue.name,
+            exchange_name,
+            routing_key,
+        )
 
     async def close(self) -> None:
         """Close the RabbitMQ connection."""

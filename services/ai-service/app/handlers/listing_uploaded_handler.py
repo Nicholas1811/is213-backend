@@ -1,7 +1,11 @@
+import logging
+
+from app.config import LISTING_PROCESSED_ROUTING_KEY, RABBITMQ_EXCHANGE
 from app.messaging.publisher import Publisher
-from app.config import LISTING_PROCESSED_ROUTING_KEY
 from app.schemas.listing_uploaded import ListingUploadRequest
 from app.services.listing_process_service import ListingProcessService
+
+logger = logging.getLogger(__name__)
 
 
 class ListingUploadedHandlder:
@@ -14,9 +18,19 @@ class ListingUploadedHandlder:
     async def handle(self, payload: dict) -> None:
 
         incoming_message = ListingUploadRequest.model_validate(payload)
+        logger.info(
+            "Received listing.uploaded event for listing_id=%s",
+            incoming_message.data.id,
+        )
 
         response = await self.listing_process_service.process(incoming_message)
 
         await self.publisher.publish(
-            LISTING_PROCESSED_ROUTING_KEY, response.model_dump(by_alias=True)
+            exchange_name=RABBITMQ_EXCHANGE,
+            routing_key=LISTING_PROCESSED_ROUTING_KEY,
+            payload=response.model_dump(by_alias=True),
+        )
+        logger.info(
+            "Published listing.processed event for listing_id=%s",
+            response.data.id,
         )

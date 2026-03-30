@@ -108,7 +108,7 @@ class PurchaseWorkflow:
                 start_to_close_timeout=timedelta(seconds=10),
                 retry_policy=retry_policy
             )
-            ##TODO NIC: Update the point endpoint to have the referenceID usingthe orderID.
+            ##TODO NIC: Update the point endpoint to have the referenceID using the orderID.
             print(order_id)
             order_id = order["id"]
 
@@ -138,7 +138,6 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
-                ##TODO NIC: Update the payment_id in order to have the paymentID.
                 order_update = await workflow.execute_activity(
                     update_order_paymentId,
                     {

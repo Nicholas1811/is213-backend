@@ -80,6 +80,8 @@ services:
     networks:
       - temporal-network
       - default
+    depends_on:
+      - rabbitmq
 
   order-service:
     build:
@@ -106,6 +108,7 @@ services:
     networks:
       - temporal-network
       - default
+
   point-worker:
     build:
       context: ./points-service
@@ -129,8 +132,8 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: ai-service
-    #    env_file:
-    #      - ./ai-service/.env
+    env_file:
+     - ./ai-service/.env
     expose:
       - "8080"
     depends_on:
@@ -153,8 +156,6 @@ services:
       context: ./Refund-service
       dockerfile: Dockerfile
     container_name: refund-service
-    # env_file:
-    #   - ./Refund-service/.env
     expose:
       - "8080"
     networks:                 
@@ -164,6 +165,21 @@ services:
       - temporal
       - point-service
       - payment-service
+
+  refund-worker:
+    build:
+      context: ./Refund-service
+      dockerfile: Dockerfile
+    container_name: refund-worker
+    command: python -m worker.refund_worker
+    restart: on-failure
+    expose:
+      - "8080"
+    networks:
+      - temporal-network
+    depends_on:
+      - temporal
+    
 
   purchase-worker:
     build:
@@ -180,26 +196,6 @@ services:
     depends_on:
       - temporal
       - point-service
-
-  refund-worker:
-    build:
-      context: ./Refund-service
-      dockerfile: Dockerfile
-    container_name: refund-worker
-    command: python -m worker.refund_worker
-    restart: on-failure
-    #    env_file:
-    #      - ./Refund-service/.env
-    expose:
-      - "8080"
-    networks:
-      - temporal-network
-    depends_on:
-      - temporal
-      - point-service
-      - payment-service
-
-
 
   ## == Rabbit MQ ==
   rabbitmq:
@@ -301,6 +297,7 @@ services:
       - listing-service
       - point-service
       - purchase-product-service
+      - refund-service
     networks:
       - default
       - temporal-network

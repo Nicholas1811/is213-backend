@@ -1,7 +1,9 @@
 import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
-from activities.payment_activity import refund_payment, reverse_refund
+import concurrent.futures
+
+from activities.payment_activity import refund_payment
 from activities.point_activity import deduct_points_compensation, restore_points
 from workflows.refund_workflow import RefundWorkflow
 
@@ -17,19 +19,20 @@ async def connect_temporal():
 
 async def main():
     client = await connect_temporal()
-    worker = Worker(
-        client,
-        task_queue="refund-task-queue",
-        workflows=[RefundWorkflow],
-        activities=[
-            refund_payment,
-            reverse_refund,
-            restore_points,
-            deduct_points_compensation,
-        ],
-    )
-    print("Refund worker started")
-    await worker.run()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=100) as activity_executor:
+        worker = Worker(
+            client,
+            task_queue="refund-task-queue",
+            workflows=[RefundWorkflow],
+            activities=[
+                refund_payment,
+                restore_points,
+                deduct_points_compensation,
+            ],
+            activity_executor=activity_executor,
+        )
+        print("Refund worker started")
+        await worker.run()
 
 if __name__ == "__main__":
     asyncio.run(main())

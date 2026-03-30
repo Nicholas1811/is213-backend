@@ -1,4 +1,5 @@
 from os import environ
+from aio_pika import logger
 from openai import OpenAI
 from openai.types.responses import ResponseInputParam
 import json
@@ -49,4 +50,5 @@ class OpenAIClient:
             }
         ]
         response = self.client.responses.create(model=self.model, input=user_input)
+        logger.info(response)
         return json.loads(response.output_text)

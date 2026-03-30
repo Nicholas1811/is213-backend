@@ -124,6 +124,17 @@ plugins:
       credentials: true
       max_age: 36000
 
+#
+#
+#  - name: refund-service
+#    url: http://refund-service:8080
+#    routes:
+#      - name: refund-route
+#        paths:
+#          - /refund
+#    connect_timeout: 60000
+#    read_timeout: 120000
+#    write_timeout: 60000
 
 
   ## should be dont need for notification for a route, this one should be handled internally.

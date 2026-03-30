@@ -8,4 +8,3 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 8080
 CMD ["python", "controller/refund_controller.py"]
-# ENTRYPOINT ["top", "-b"]

@@ -102,5 +102,16 @@ def upload_after_image(transaction_id):
 
     return jsonify({"status": "success", "transaction_id": str(photo_record.id)}), 200
 
+@app.route('/photos/<uuid:transaction_id>/status', methods=['GET'])
+def get_photo_status(transaction_id):
+    photo = services.fetch_photo_process(transaction_id)
+
+    if not photo:
+        return jsonify({"status": "error", "message": "Not found"}), 404
+
+    return jsonify({
+        "status": photo.status,   # pending / approved / rejected
+    }), 200
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=8080, debug=True)
