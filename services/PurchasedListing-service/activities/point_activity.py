@@ -34,3 +34,23 @@ async def refund_points(data):
     if r.status_code >= 400:
         raise Exception(f"Points service error during refund: {r.status_code} {r.text}")
     return r.json()
+
+@activity.defn
+async def updatePointWithOrderId(data):
+    print(data, flush=True)
+    try:
+        response = requests.patch(
+            f"http://point-service:8080/transaction/{data['transaction_id']}",
+            json={
+                "new_ref_id": data['order_id']
+            },
+            timeout=5
+        )
+        if response.status_code >= 400:
+            raise Exception(
+                f"Points service error during update: "
+                f"{response.status_code} {response.text}"
+            )
+        return response.json()
+    except requests.RequestException as e:
+        raise Exception(f"HTTP request failed: {str(e)}")
