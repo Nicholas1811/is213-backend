@@ -1,11 +1,14 @@
 from collections.abc import Awaitable, Callable
 import json
+import logging
 
 from aio_pika import ExchangeType
 from aio_pika.abc import AbstractIncomingMessage
 
 from app.clients.rabbitmq_client import RabbitMQClient
+
 MessageHandler = Callable[[dict], Awaitable[None]]
+logger = logging.getLogger(__name__)
 
 
 class Consumer:
@@ -39,9 +42,20 @@ class Consumer:
         )
 
         await queue.consume(self._handle_message)
+        logger.info(
+            "Consumer started queue_name=%s exchange_name=%s routing_key=%s",
+            self.queue_name,
+            self.exchange_name,
+            self.routing_key,
+        )
 
     async def _handle_message(self, message: AbstractIncomingMessage) -> None:
 
         async with message.process(requeue=False):
             payload = json.loads(message.body.decode("utf-8"))
+            logger.info(
+                "Received message queue_name=%s routing_key=%s",
+                self.queue_name,
+                message.routing_key,
+            )
             await self.handler(payload)
