@@ -17,6 +17,7 @@ import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.RoleModel;
 import org.keycloak.util.JsonSerialization;
 
 public class UserRegistrationEventListenerProvider implements EventListenerProvider {
@@ -58,11 +59,31 @@ public class UserRegistrationEventListenerProvider implements EventListenerProvi
         RealmModel realm = session.realms().getRealm(event.getRealmId());
         UserModel user = session.users().getUserById(realm, event.getUserId());
 
+        if (user == null) {
+            LOGGER.warning("user-sync-listener skipped: user not found");
+            return;
+        }
+
+        // Grant realm role based on custom attribute 'Role_selection'
+        String selectedRoleName = user.getFirstAttribute("Role_selection");
+        if (selectedRoleName == null) {
+            selectedRoleName = user.getFirstAttribute("role_selection"); // Fallback
+        }
+
+        if (selectedRoleName != null && !selectedRoleName.isBlank()) {
+            RoleModel role = realm.getRole(selectedRoleName.toLowerCase().trim());
+            if (role != null) {
+                user.grantRole(role);
+                LOGGER.info("Assigned role [" + role.getName() + "] to user [" + user.getUsername() + "]");
+            }
+        }
+
         Map<String, Object> details = new HashMap<>();
-        details.put("username", user != null ? user.getUsername() : null);
-        details.put("email", user != null ? user.getEmail() : null);
-        details.put("first_name", user != null ? user.getFirstName() : null);
-        details.put("last_name", user != null ? user.getLastName() : null);
+        details.put("username", user.getUsername());
+        details.put("email", user.getEmail());
+        details.put("first_name", user.getFirstName());
+        details.put("last_name", user.getLastName());
+        details.put("role", selectedRoleName);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", EVENT_TYPE_REGISTER);
