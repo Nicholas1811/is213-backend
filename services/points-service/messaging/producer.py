@@ -46,10 +46,10 @@ def publish_notification(user_id,trans_id,status):
     )
 
     if status == "approved":
-        key = "points.success"
+        key = "point.success"
         msg = "Point awarded successfully"
     else:
-        key = "points.failure"
+        key = "point.failure"
         msg = "Point awarded successfully"
 
     event = {
