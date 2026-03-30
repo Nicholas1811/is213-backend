@@ -5,7 +5,7 @@ from workflows.purchase_workflow import PurchaseWorkflow
 from activities.get_listing_price import purchase_listing, reset_listing
 from activities.point_activity import use_points, refund_points, updatePointWithOrderId
 from activities.payment_activity import charge_payment
-from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId
+from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId, update_order_pointId
 
 
 #In this method, we define a worker, in which it needs a workflow and the acitvities to pump the activities into the workflow.
@@ -39,7 +39,8 @@ async def main():
             update_order_status,
             charge_payment,
             create_order,
-            updatePointWithOrderId
+            updatePointWithOrderId,
+            update_order_pointId
         ],
     )
 

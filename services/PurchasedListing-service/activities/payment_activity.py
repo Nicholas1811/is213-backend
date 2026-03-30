@@ -16,6 +16,7 @@ async def charge_payment(data):
             "points_changed" : int(data['points_changed'])
         }
     )
+    print("Payment data is: " , r.json(), flush=True)
     if r.status_code != 200:
         raise Exception(f"Payment service failed: {r.status_code} {r.text}")
 

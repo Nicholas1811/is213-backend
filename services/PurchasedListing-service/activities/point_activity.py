@@ -16,6 +16,7 @@ async def use_points(data):
             "reference_id" : str(uuid.uuid4()) ## To edit
         }
     )
+    print("Point entry is: " , r.json(), flush=True)
     if r.status_code >= 400:
         raise Exception(f"Points service error: {r.status_code} {r.text}")
     return r.json()
@@ -31,6 +32,7 @@ async def refund_points(data):
             "reference_id" : str(uuid.uuid4()) ## To edit.
         }
     )
+    print("Point entry refund is: " , r.json(), flush=True)
     if r.status_code >= 400:
         raise Exception(f"Points service error during refund: {r.status_code} {r.text}")
     return r.json()
@@ -46,6 +48,7 @@ async def updatePointWithOrderId(data):
             },
             timeout=5
         )
+        print("Update Point with Order ID data is: " , response.json(), flush=True)
         if response.status_code >= 400:
             raise Exception(
                 f"Points service error during update: "

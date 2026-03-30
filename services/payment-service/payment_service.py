@@ -46,7 +46,7 @@ async def process_payment(checkout_request: CheckoutRequest):
                     },
                     "unit_amount": checkout_request.price,
                 },
-                "quantity": checkout_request.quantity_to_update,
+                "quantity": 1
             }],
             mode="payment",
             success_url="http://localhost:8000/payment/payment-success?session_id={CHECKOUT_SESSION_ID}",

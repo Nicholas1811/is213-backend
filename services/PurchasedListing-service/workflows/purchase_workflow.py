@@ -9,7 +9,7 @@ with workflow.unsafe.imports_passed_through():
     from activities.get_listing_price import purchase_listing, reset_listing
     from activities.point_activity import use_points, refund_points, updatePointWithOrderId
     from activities.payment_activity import charge_payment
-    from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId
+    from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId, update_order_pointId
 
 retry_policy = RetryPolicy(
     initial_interval=timedelta(seconds=2),
@@ -31,6 +31,8 @@ class PurchaseWorkflow:
         order_id = None
         try:
             ## Listing here will lower the numbers.
+
+            ##Okay over here.
             listing = await workflow.execute_activity(
                 purchase_listing,
                 {"listing_id": data['listing_id'],
@@ -59,41 +61,11 @@ class PurchaseWorkflow:
             print(remaining, flush=True)
             #more, then need to call checkout url.
 
-            point = None
-            if points_to_use > 0: #If using points
-                ## Use points, a POST to the DB which says SPEND. You spend whatever that is lower, either ALL your points, or the total price.
-                point = await workflow.execute_activity(
-                    use_points,
-                    {
-                        "user_id": data['user_id'],
-                        "points_changed": points_to_use, #Call endpoint to get user points on frontend.
-                        "transaction_type" : "SPEND",
-                        "reference_id" : sample_order_ref # Might want to bring the order creation flow on top first.
-                    },
-                    start_to_close_timeout=timedelta(seconds=10),
-                    retry_policy=retry_policy
-                )
-                ## Crash safe
-                compensations.append(
-                    ("refund_points", {
-                        "user_id": data["user_id"],
-                        "points_changed": points_to_use,
-                        "transaction_type": "REFUND",
-                        "reference_id": order_ref
-                    })
-                )
-                points_used = True
-            ##If the remaining is less than 0, we instantly submit the order, else we need to return the checkout url.
-            ## We send the orderID.
-            ## Order ID would need the point ID first, then send it over.
-            point_id = ""
-
-            if(point!= None):
-                point_id = point['id']
-            enum_for_order = "PAID"
             if(remaining > 0):
                 enum_for_order = "PENDING"
-
+            else:
+                enum_for_order = "PAID"
+            ##TODO Create order over here. we need to update order with new point_id and new payment_id.
             order = await workflow.execute_activity(
                 create_order,
                 {
@@ -101,7 +73,7 @@ class PurchaseWorkflow:
                     "listing_id": data['listing_id'],
                     "status" : enum_for_order,
                     "total_paid" : total,
-                    "point_id" : point_id,
+                    "point_id" : "Empty",
                     "payment_id" : "Empty",
                     "qty" : data['quantity'],
                 },
@@ -109,6 +81,51 @@ class PurchaseWorkflow:
                 retry_policy=retry_policy
             )
             order_id = order["id"]
+            compensations.append(
+                ("cancel_order", {"order_id": order_id})
+            )
+
+            point = None
+            if points_to_use > 0: #If using points
+                ## Use points, a POST to the DB which says SPEND. You spend whatever that is lower, either ALL your points, or the total price.
+                ## Added in, so it is okay.
+                point = await workflow.execute_activity(
+                    use_points,
+                    {
+                        "user_id": data['user_id'],
+                        "points_changed": points_to_use, #Call endpoint to get user points on frontend.
+                        "transaction_type" : "SPEND",
+                        "reference_id" : order_id # Might want to bring the order creation flow on top first.
+                    },
+                    start_to_close_timeout=timedelta(seconds=10),
+                    retry_policy=retry_policy
+                )
+                orderUpdate = await workflow.execute_activity(
+                    update_order_pointId,
+                    {
+                        "order_id": order_id,
+                        "point_id": point['id']
+                    },
+                    start_to_close_timeout=timedelta(seconds=10),
+                    retry_policy=retry_policy
+                )
+
+                ## Crash safe
+                compensations.append(
+                    ("refund_points", {
+                        "user_id": data["user_id"],
+                        "points_changed": points_to_use,
+                        "transaction_type": "REFUND",
+                        "reference_id": order_id
+                    })
+                )
+                points_used = True
+            ##If the remaining is less than 0, we instantly submit the order, else we need to return the checkout url.
+            ## We send the orderID.
+            ## Order ID would need the point ID first, then send it over.
+            if(point != None):
+                point_id = point['id']
+
             if(points_to_use > 0):
                 update_point = await workflow.execute_activity(
                     updatePointWithOrderId,
@@ -122,9 +139,7 @@ class PurchaseWorkflow:
                 print(update_point, flush=True)
 
             ##Crash safe
-            compensations.append(
-                ("cancel_order", {"order_id": order_id})
-            )
+
             payment_id = None
             ## If points is not enough, means we pay more.
             ## You might need more details for the charge payment.
