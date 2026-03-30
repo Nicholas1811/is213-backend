@@ -53,6 +53,30 @@ def create_transaction():
         db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/transaction/<uuid:transaction_id>', methods=['PATCH'])
+def update_transaction_ref(transaction_id):
+    new_ref = request.get_json().get('new_ref_id')
+    
+    if not new_ref:
+        return jsonify({"status": "error", "message": "new_ref_id is required"}), 400
+
+    try:
+        updated_tx = services.update_transaction_reference(transaction_id, new_ref)
+        
+        if not updated_tx:
+            return jsonify({"status": "error", "message": "Transaction record not found"}), 404
+
+        return jsonify({
+            "status": "success", 
+            "transaction_id": str(updated_tx.id),
+            "new_reference_id": updated_tx.reference_id
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/photos/', methods=['POST'])
 def create_photo_process():
     try:
@@ -77,6 +101,17 @@ def upload_after_image(transaction_id):
     publish_to_ai(photo_record.user_id, photo_record.id, photo_record.before_image_url, after_url)
 
     return jsonify({"status": "success", "transaction_id": str(photo_record.id)}), 200
+
+@app.route('/photos/<uuid:transaction_id>/status', methods=['GET'])
+def get_photo_status(transaction_id):
+    photo = services.fetch_photo_process(transaction_id)
+
+    if not photo:
+        return jsonify({"status": "error", "message": "Not found"}), 404
+
+    return jsonify({
+        "status": photo.status,   # pending / approved / rejected
+    }), 200
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=8080, debug=True)

@@ -7,8 +7,8 @@ import uuid
 
 with workflow.unsafe.imports_passed_through():
     from activities.get_listing_price import purchase_listing, reset_listing
-    from activities.point_activity import use_points, refund_points
-    from activities.payment_activity import charge_payment #, refund_payment
+    from activities.point_activity import use_points, refund_points, updatePointWithOrderId
+    from activities.payment_activity import charge_payment
     from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId
 
 retry_policy = RetryPolicy(
@@ -108,9 +108,18 @@ class PurchaseWorkflow:
                 start_to_close_timeout=timedelta(seconds=10),
                 retry_policy=retry_policy
             )
-            ##TODO NIC: Update the point endpoint to have the referenceID usingthe orderID.
-            print(order_id)
             order_id = order["id"]
+            if(points_to_use > 0):
+                update_point = await workflow.execute_activity(
+                    updatePointWithOrderId,
+                    {
+                        "transaction_id": point_id,
+                        "order_id": order["id"]
+                    },
+                    start_to_close_timeout=timedelta(seconds=10),
+                    retry_policy=retry_policy
+                )
+                print(update_point, flush=True)
 
             ##Crash safe
             compensations.append(
@@ -138,7 +147,6 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
-                ##TODO NIC: Update the payment_id in order to have the paymentID.
                 order_update = await workflow.execute_activity(
                     update_order_paymentId,
                     {

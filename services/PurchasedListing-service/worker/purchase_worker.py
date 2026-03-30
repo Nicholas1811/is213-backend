@@ -3,7 +3,7 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 from workflows.purchase_workflow import PurchaseWorkflow
 from activities.get_listing_price import purchase_listing, reset_listing
-from activities.point_activity import use_points, refund_points
+from activities.point_activity import use_points, refund_points, updatePointWithOrderId
 from activities.payment_activity import charge_payment
 from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId
 
@@ -39,6 +39,7 @@ async def main():
             update_order_status,
             charge_payment,
             create_order,
+            updatePointWithOrderId
         ],
     )
 

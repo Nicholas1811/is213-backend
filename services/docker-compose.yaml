@@ -80,6 +80,8 @@ services:
     networks:
       - temporal-network
       - default
+    depends_on:
+      - rabbitmq
 
   order-service:
     build:
@@ -106,6 +108,7 @@ services:
     networks:
       - temporal-network
       - default
+
   point-worker:
     build:
       context: ./points-service

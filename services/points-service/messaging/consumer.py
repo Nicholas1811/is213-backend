@@ -17,7 +17,7 @@ def on_ai_result(ch, method, properties, body):
             return
 
         success = handle_ai_verdict(trans_id, user_id, status)
-        
+        print(success, flush=True)
         if success:
             print(f" [v] Successfully updated DB for {trans_id}")
             ch.basic_ack(delivery_tag=method.delivery_tag)

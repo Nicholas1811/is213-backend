@@ -1,9 +1,12 @@
 import json
+import logging
 
 import aio_pika
 
-from app.clients.rabbitmq_client import RabbitMQClient
 from aio_pika import ExchangeType
+from app.clients.rabbitmq_client import RabbitMQClient
+
+logger = logging.getLogger(__name__)
 
 
 class Publisher:
@@ -34,4 +37,10 @@ class Publisher:
         await exchange.publish(
             message,
             routing_key=routing_key,
+        )
+        logger.info(
+            "Published message exchange_name=%s routing_key=%s payload=%s",
+            exchange_name or "<default>",
+            routing_key,
+            payload,
         )
