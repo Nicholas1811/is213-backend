@@ -11,7 +11,9 @@ import {
   uploadAfterMealPhoto,
   uploadBeforeMealPhoto
 } from "@/api/pointsEndpoints";
+
 import {uploadImageToS3, fetchImageUrl} from "@/api/s3";
+import {useKeycloak} from "@react-keycloak/web";
 
 type Step = "before" | "after" | "submitted";
 
@@ -23,8 +25,7 @@ export default function EarnPoints() {
   const [beforeUploadError, setBeforeUploadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionId, setTransactionId] = useState<string | null>(null);
-
-  // async function handleBeforeUpload() {
+  const { keycloak, initialized } = useKeycloak();  // async function handleBeforeUpload() {
   //   const file = new File([beforePhoto], "before.jpg", { type: beforePhoto.type });
   //   if (!beforePhoto) {
   //     setBeforeUploadError("Capture your before photo first.");
@@ -60,7 +61,9 @@ export default function EarnPoints() {
 
       const key = await uploadImageToS3(file);
       const fileURL = await fetchImageUrl(key);
-      const photoProcess = await createPhotoProcess(fileURL);
+      const userID =  keycloak.subject;
+      console.log(userID);
+      const photoProcess = await createPhotoProcess(userID, fileURL);
       setTransactionId(photoProcess.id);
       console.log("S3 upload success, key:", key);
       console.log(fileURL);
@@ -124,6 +127,7 @@ export default function EarnPoints() {
         }
 
         if (res.status === "rejected") {
+          setStep("rejected");
           // optional: show rejection UI
           clearInterval(interval);
         }

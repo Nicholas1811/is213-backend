@@ -29,7 +29,6 @@ export default function Navbar() {
   // Authenticated state from Keycloak
   const userId = keycloak.subject || "temp-user-id";
   const userName = (keycloak.tokenParsed as any)?.name || (keycloak.tokenParsed as any)?.preferred_username || "Guest";
-  
   // Determine role from Keycloak realm roles
   const isKeycloakBuyer = keycloak.hasRealmRole("buyer");
   const isKeycloakSeller = keycloak.hasRealmRole("seller");
@@ -61,7 +60,8 @@ export default function Navbar() {
     setNotificationError(null);
 
     try {
-      await registerNotificationToken(userId);
+      let regValue = await registerNotificationToken(userId);
+      console.log(regValue);
       setNotificationError(null);
     } catch (error) {
       const errorMessage =

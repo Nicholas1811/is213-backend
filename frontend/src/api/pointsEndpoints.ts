@@ -6,7 +6,6 @@ import type {
   SubmitMealPhotosResponse,
   UploadBeforePhotoResponse,
 } from "@/api/types/point";
-
 const USE_DUMMY_POINTS = import.meta.env.VITE_USE_DUMMY_POINTS !== "false";
 
 const DUMMY_TRANSACTIONS: PointTransaction[] = [
@@ -115,9 +114,9 @@ export async function getPointsHistory(userId?: string): Promise<PointTransactio
   return data;
 }
 
-export async function createPhotoProcess(beforeImageUrl: string) {
+export async function createPhotoProcess(userID:string,  beforeImageUrl: string) {
     const payload = {
-        user_id: "11111111-1111-1111-1111-111111111111", //TODO CHANGE
+        user_id: userID,
         before_image_url: beforeImageUrl,
     };
 
@@ -161,6 +160,16 @@ export async function uploadAfterMealPhoto(
 export async function getPhotoStatus(transactionId: string) {
     const res = await fetch(
         `http://localhost:8000/points/photos/${transactionId}/status`
+    );
+
+    if (!res.ok) throw new Error("Failed to fetch status");
+
+    return res.json();
+}
+
+export async function getUserPointBalance(userID:string){
+    const res = await fetch(
+        `http://localhost:8000/points/balance/${userID}`
     );
 
     if (!res.ok) throw new Error("Failed to fetch status");

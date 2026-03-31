@@ -12,6 +12,8 @@ import apiClient from "@/api/client";
 import { ENDPOINTS } from "@/api/endpoints";
 import { fetchImageUrl } from "@/api/s3";
 import { purchaseNow } from "@/api/purchaseEndpoints";
+import {useKeycloak} from "@react-keycloak/web";
+import { getUserPointBalance  } from "@/api/pointsEndpoints.ts";
 
 interface ApiListing {
   id: number;
@@ -35,6 +37,7 @@ export default function ListingDetail() {
   const [notFound, setNotFound] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const userId = useAuthStore((s) => s.userId);
+  const { keycloak, initialized } = useKeycloak();
   //const pointsBalance = usePointsStore((s) => s.balance);
 
   useEffect(() => {
@@ -61,21 +64,22 @@ export default function ListingDetail() {
 
   async function handlePurchaseNow() {
     if (!listing) return;
+    const effectiveUserId = keycloak.subject
+    const result = await getUserPointBalance(effectiveUserId).catch(() => null);
 
-    //const effectiveUserId = userId ?? "temp-user-id"; //TODO CHANGE
-    const effectiveUserId =
-        userId ??
-        crypto.randomUUID(); //TODO CHANGE
-    //const pointsToUse = Math.max(0, pointsBalance); //TODO CHANGE
+    const balance = result?.balance ?? 0;
+    const pointToUse = Math.max(0, balance);
+
+    console.log(balance, " balance");
+    console.log(pointToUse, " Point to use");
 
     setIsPurchasing(true);
     try {
       const response = await purchaseNow({
         listing_id: listing.id, //DONE
-        user_id: effectiveUserId, //TODO CHANGE
-        quantity, //DONE
-        //points: pointsToUse,
-        points: 10, //TODO GET ALL USER POINTS
+        user_id: effectiveUserId,
+        quantity,
+        points: pointToUse,
       });
 
       if ("checkout_url" in response && response.checkout_url) {
