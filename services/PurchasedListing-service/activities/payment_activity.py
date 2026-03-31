@@ -5,6 +5,9 @@ import requests
 @activity.defn
 async def charge_payment(data):
 
+    # tracking of workflow
+    info = activity.info()
+
     r = requests.post(
         "http://payment-service:8080/process-payment",
         json={
@@ -13,7 +16,8 @@ async def charge_payment(data):
             "quantity_to_update" : int(data['quantityToUpdate']),
             "listing_id" : data['listing_id'],
             "order_id" : data['orderId'],
-            "points_changed" : int(data['points_changed'])
+            "points_changed" : int(data['points_changed']),
+            "workflow_id": info.workflow_id
         }
     )
     print("Payment data is: " , r.json(), flush=True)
