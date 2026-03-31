@@ -31,13 +31,16 @@ export default function Navbar() {
   const userName = (keycloak.tokenParsed as any)?.name || (keycloak.tokenParsed as any)?.preferred_username || "Guest";
   
   // Determine role from Keycloak realm roles
-  const isKeycloakBuyer = keycloak.hasRealmRole("buyer");
-  const isKeycloakSeller = keycloak.hasRealmRole("seller");
-  const role = isKeycloakBuyer 
+  const isKeycloakBuyer = keycloak.hasRealmRole("Buyer");
+  const isKeycloakSeller = keycloak.hasRealmRole("Seller");
+  const role = isKeycloakBuyer
     ? UserRole.BUYER 
     : isKeycloakSeller 
       ? UserRole.SELLER 
       : "unknown";
+  console.log(role)
+  console.log(role)
+
 
   const itemCount = useCartStore((s) => s.getItemCount());
   const balance = usePointsStore((s) => s.balance);
@@ -48,7 +51,6 @@ export default function Navbar() {
 
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [notificationError, setNotificationError] = useState<string | null>(null);
-
   const handleEnableNotifications = async () => {
     if (!userId) {
       setNotificationError("User not authenticated");
