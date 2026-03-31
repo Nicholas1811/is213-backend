@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Package, Eye, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,37 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// Mock data
-const MOCK_ORDERS = [
-  {
-    id: "order-1",
-    items: [{ listingName: "Grilled Chicken Salad", quantity: 2 }],
-    total: 17.8,
-    status: "completed" as const,
-    pointsEarned: 5,
-    createdAt: "2025-03-04T14:30:00Z",
-  },
-  {
-    id: "order-2",
-    items: [
-      { listingName: "Pasta Carbonara", quantity: 1 },
-      { listingName: "Açaí Bowl", quantity: 1 },
-    ],
-    total: 18.0,
-    status: "confirmed" as const,
-    pointsEarned: 0,
-    createdAt: "2025-03-05T09:15:00Z",
-  },
-  {
-    id: "order-3",
-    items: [{ listingName: "Sushi Platter", quantity: 1 }],
-    total: 14.0,
-    status: "pending" as const,
-    pointsEarned: 0,
-    createdAt: "2025-03-05T11:00:00Z",
-  },
-];
+import { useKeycloak } from "@react-keycloak/web";
+import { getOrdersByUser } from "@/api/orderEndpoints";
+import type { Order } from "@/api/types/order";
 
 const statusConfig = {
   pending: { label: "Pending", icon: Clock, variant: "secondary" as const },
@@ -51,6 +24,81 @@ const statusConfig = {
 };
 
 export default function MyOrders() {
+  const { keycloak, initialized } = useKeycloak();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (!initialized) {
+      return () => {
+        mounted = false;
+      };
+    }
+
+    async function loadOrders() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const userId = keycloak.subject || "temp-user-id";
+        const data = await getOrdersByUser(userId);
+        if (mounted) {
+          setOrders(data);
+        }
+      } catch (loadError) {
+        console.error("Failed to load orders", loadError);
+        if (mounted) {
+          setError("Failed to load order history.");
+        }
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadOrders();
+
+    return () => {
+      mounted = false;
+    };
+  }, [initialized, keycloak.subject]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">My Orders</h1>
+          <p className="text-muted-foreground mt-1">Track your meal purchases</p>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Loading orders...
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">My Orders</h1>
+          <p className="text-muted-foreground mt-1">Track your meal purchases</p>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center text-destructive">
+            {error}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -58,7 +106,7 @@ export default function MyOrders() {
         <p className="text-muted-foreground mt-1">Track your meal purchases</p>
       </div>
 
-      {MOCK_ORDERS.length === 0 ? (
+      {orders.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="mx-auto h-12 w-12 text-muted-foreground/50" />
@@ -90,7 +138,7 @@ export default function MyOrders() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {MOCK_ORDERS.map((order) => {
+                {orders.map((order) => {
                   const config = statusConfig[order.status];
                   const StatusIcon = config.icon;
 
@@ -101,7 +149,7 @@ export default function MyOrders() {
                       </TableCell>
                       <TableCell>
                         {order.items.map((item) => (
-                          <div key={item.listingName} className="text-sm">
+                          <div key={`${item.listingId}-${item.quantity}`} className="text-sm">
                             {item.listingName} x{item.quantity}
                           </div>
                         ))}
@@ -123,7 +171,7 @@ export default function MyOrders() {
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {new Date(order.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <Link to={`/buyer/orders/${order.id}`}>

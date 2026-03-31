@@ -15,18 +15,23 @@ import { usePointsStore } from "@/store/pointsStore";
 import { POINTS_TO_DOLLAR_RATIO } from "@/lib/constants";
 import { getPointsHistory } from "@/api/pointsEndpoints";
 import type { PointTransaction } from "@/api/types/point";
+import { useKeycloak } from "@react-keycloak/web";
 
 const typeConfig: Record<
   PointTransaction["type"],
   { label: string; icon: typeof Camera; color: string }
 > = {
-  earned_meal_photo: { label: "Meal Photo", icon: Camera, color: "text-primary" },
-  earned_order_complete: { label: "Order Bonus", icon: ShoppingBag, color: "text-primary" },
-  redeemed: { label: "Redeemed", icon: TrendingUp, color: "text-destructive" },
+  EARN: { label: "Meal photo", icon: Camera, color: "text-primary" },
+  REFUND: { label: "Refund", icon: TrendingUp, color: "text-primary" },
+  SPEND: { label: "Spendings", icon: ShoppingBag, color: "text-destructive" },
+  earned_meal_photo: { label: "Meal photo", icon: Camera, color: "text-primary" },
+  earned_order_complete: { label: "Meal photo", icon: Camera, color: "text-primary" },
+  redeemed: { label: "Spendings", icon: ShoppingBag, color: "text-destructive" },
 };
 
 export default function PointsHistory() {
   const balance = usePointsStore((s) => s.balance);
+  const { keycloak, initialized } = useKeycloak();
   const [transactions, setTransactions] = useState<PointTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,12 +39,19 @@ export default function PointsHistory() {
   useEffect(() => {
     let mounted = true;
 
+    if (!initialized) {
+      return () => {
+        mounted = false;
+      };
+    }
+
     async function loadTransactions() {
       setIsLoading(true);
       setError(null);
 
       try {
-        const data = await getPointsHistory("temp-user-id");
+        const userId = keycloak.subject || "temp-user-id";
+        const data = await getPointsHistory(userId);
         if (mounted) {
           const sorted = [...data].sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -63,7 +75,7 @@ export default function PointsHistory() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialized, keycloak.subject]);
 
   const totalEarned = useMemo(
     () => transactions.filter((t) => t.amount > 0).reduce((sum, t) => sum + t.amount, 0),
@@ -215,7 +227,7 @@ export default function PointsHistory() {
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {new Date(txn.createdAt).toLocaleDateString()}
+                        {new Date(txn.createdAt).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   );

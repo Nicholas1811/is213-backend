@@ -40,7 +40,7 @@ channel.queue_declare(
 channel.queue_bind(
     exchange="notification-exchange",
     queue="notification.queue",
-    routing_key="#.failed"
+    routing_key="#.failure"
 )
 
 channel.queue_bind(

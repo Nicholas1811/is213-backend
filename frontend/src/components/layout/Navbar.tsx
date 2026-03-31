@@ -19,15 +19,16 @@ import { registerNotificationToken } from "@/services/notificationService";
 import { useKeycloak } from "@react-keycloak/web";
 import { useAuthStore } from "@/store/authStore";
 import { isKeycloakConfigured } from "@/lib/keycloak";
+import { resolveNotificationUserId } from "@/lib/notificationUser";
 
 export default function Navbar() {
   const location = useLocation();
 
-  const { keycloak } = useKeycloak();
+  const { keycloak, initialized } = useKeycloak();
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   // Authenticated state from Keycloak
-  const userId = keycloak.subject || "temp-user-id";
+  const userId = resolveNotificationUserId(keycloak.subject);
   const userName = (keycloak.tokenParsed as any)?.name || (keycloak.tokenParsed as any)?.preferred_username || "Guest";
   // Determine role from Keycloak realm roles
   const isKeycloakBuyer = keycloak.hasRealmRole("buyer");
@@ -39,6 +40,7 @@ export default function Navbar() {
       : "unknown";
   console.log(role)
   console.log(role)
+  console.log(userId);
 
 
   const itemCount = useCartStore((s) => s.getItemCount());
@@ -114,8 +116,12 @@ export default function Navbar() {
   const navLinks = isBuyer ? buyerLinks : isSeller ? sellerLinks : [];
 
   useEffect(() => {
+    if (isKeycloakConfigured && !initialized) {
+      return;
+    }
+
     void hydrateFromApi(userId);
-  }, [hydrateFromApi, userId]);
+  }, [hydrateFromApi, initialized, userId]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

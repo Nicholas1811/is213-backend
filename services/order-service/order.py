@@ -207,6 +207,31 @@ def delete_order(order_id: int) -> tuple[dict[str, str], int]:
 	except SQLAlchemyError as error:
 		return {"error": f"Failed to delete order: {error}"}, 500
 
+@app.get("/user/<string:user_id>")
+def get_orders_by_user(user_id: str) -> tuple[dict[str, Any], int]:
+	limit = request.args.get("limit", default=10, type=int)
+	safe_limit = max(1, min(limit, 100))
+
+	try:
+		with _db_engine().connect() as connection:
+			rows = connection.execute(
+				text("""
+					 SELECT * FROM orders
+					 WHERE user_id = :user_id
+					 ORDER BY id DESC
+						 LIMIT :limit
+					 """),
+				{"user_id": user_id, "limit": safe_limit},
+			).mappings().all()
+
+			return {
+				"userId": user_id,
+				"items": [_serialize_row(dict(row)) for row in rows],
+			}, 200
+
+	except SQLAlchemyError as error:
+		return {"error": f"Failed to query user orders: {error}"}, 500
+
 
 if __name__ == "__main__":
 	app.run(host="0.0.0.0", port=8080, debug=True)

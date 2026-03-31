@@ -6,6 +6,7 @@ import { onMessage } from "firebase/messaging";
 import { Toaster } from "@/components/ui/sonner";
 import { messaging } from "@/firebase/firebase";
 import keycloak, { isKeycloakConfigured } from "@/lib/keycloak";
+import { resolveNotificationUserId } from "@/lib/notificationUser";
 import { router } from "@/router";
 import { useNotificationStore } from "@/store/notificationStore";
 
@@ -49,7 +50,6 @@ const queryClient = new QueryClient({
 export default function App() {
   const refreshFromApi = useNotificationStore((s) => s.refreshFromApi);
   const recentlyHandledRef = useRef<Map<string, number>>(new Map());
-  const userId = "temp-user-id";
 
   const handleIncomingPayload = (payload: {
     messageId?: string;
@@ -66,7 +66,7 @@ export default function App() {
     }
 
     recentlyHandledRef.current.set(eventKey, now);
-    void refreshFromApi(userId);
+    void refreshFromApi(resolveNotificationUserId(keycloak.subject));
   };
 
   // Listen for foreground FCM messages

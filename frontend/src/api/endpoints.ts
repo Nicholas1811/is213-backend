@@ -23,11 +23,14 @@ export const ENDPOINTS = {
   // Order Service
   ORDERS: `${API_GATEWAY_BASE}/orders`,
   ORDER_BY_ID: (id: string) => `${API_GATEWAY_BASE}/orders/${id}`,
+  ORDERS_BY_USER: (userId: string) => `${API_GATEWAY_BASE}/orders/user/.${encodeURIComponent(userId)}`,
   CREATE_ORDER: `${API_GATEWAY_BASE}/orders`,
 
   // Points Service
   POINTS_BALANCE: `${API_GATEWAY_BASE}/points/balance`,
   POINTS_HISTORY: `${API_GATEWAY_BASE}/points/history`,
+  POINTS_TRANSACTIONS_BY_USER: (userId: string) =>
+    `${API_GATEWAY_BASE}/points/transaction/${encodeURIComponent(userId)}`,
   SUBMIT_MEAL_PHOTOS: `${API_GATEWAY_BASE}/points/meal-photos`,
   REDEEM_POINTS: `${API_GATEWAY_BASE}/points/redeem`,
 

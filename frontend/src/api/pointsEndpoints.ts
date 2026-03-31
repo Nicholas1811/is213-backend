@@ -8,12 +8,25 @@ import type {
 } from "@/api/types/point";
 const USE_DUMMY_POINTS = import.meta.env.VITE_USE_DUMMY_POINTS !== "false";
 
+interface ApiPointTransaction {
+  transaction_id: string | number;
+  points_changed: number;
+  type: string;
+  reference_id?: string | number | null;
+  timestamp: string;
+}
+
+interface ApiPointsTransactionsResponse {
+  user_id: string;
+  transactions: ApiPointTransaction[];
+}
+
 const DUMMY_TRANSACTIONS: PointTransaction[] = [
   {
     id: "txn-1",
     userId: "temp-user-id",
     amount: 10,
-    type: "earned_meal_photo",
+    type: "EARN",
     description: "Meal photo submission",
     createdAt: "2026-03-30T09:15:00Z",
   },
@@ -21,7 +34,7 @@ const DUMMY_TRANSACTIONS: PointTransaction[] = [
     id: "txn-2",
     userId: "temp-user-id",
     amount: 5,
-    type: "earned_order_complete",
+    type: "EARN",
     description: "Order #1234 completed",
     createdAt: "2026-03-29T11:30:00Z",
   },
@@ -29,7 +42,7 @@ const DUMMY_TRANSACTIONS: PointTransaction[] = [
     id: "txn-3",
     userId: "temp-user-id",
     amount: -25,
-    type: "redeemed",
+    type: "SPEND",
     description: "Redeemed during checkout",
     createdAt: "2026-03-28T14:05:00Z",
   },
@@ -37,7 +50,7 @@ const DUMMY_TRANSACTIONS: PointTransaction[] = [
     id: "txn-4",
     userId: "temp-user-id",
     amount: 10,
-    type: "earned_meal_photo",
+    type: "EARN",
     description: "Meal photo submission",
     createdAt: "2026-03-27T18:45:00Z",
   },
@@ -101,17 +114,47 @@ export async function submitMealPhotos(
   return data;
 }
 
-export async function getPointsHistory(userId?: string): Promise<PointTransaction[]> {
-  if (USE_DUMMY_POINTS) {
-    await sleep(600);
-    return DUMMY_TRANSACTIONS;
+function mapTransactionType(type: string): PointTransaction["type"] {
+  const normalized = type.toUpperCase();
+
+  if (normalized === "EARN" || normalized === "EARNED_MEAL_PHOTO" || normalized === "EARNED_ORDER_COMPLETE") {
+    return "EARN";
+  }
+  if (normalized === "REFUND") {
+    return "REFUND";
+  }
+  if (normalized === "SPEND" || normalized === "REDEEMED") {
+    return "SPEND";
   }
 
-  const { data } = await apiClient.get<PointTransaction[]>(ENDPOINTS.POINTS_HISTORY, {
-    params: userId ? { userId } : undefined,
-  });
+  return "EARN";
+}
 
-  return data;
+function toPointTransaction(userId: string, txn: ApiPointTransaction): PointTransaction {
+  return {
+    id: String(txn.transaction_id),
+    userId,
+    amount: Number(txn.points_changed) || 0,
+    type: mapTransactionType(txn.type),
+    description: txn.reference_id ? `Reference ${txn.reference_id}` : "Points transaction",
+    createdAt: txn.timestamp,
+  };
+}
+
+export async function getPointsHistory(userId: string): Promise<PointTransaction[]> {
+  try {
+    const { data } = await apiClient.get<ApiPointsTransactionsResponse>(
+      ENDPOINTS.POINTS_TRANSACTIONS_BY_USER(userId)
+    );
+
+    return (data.transactions || []).map((txn) => toPointTransaction(data.user_id || userId, txn));
+  } catch (error) {
+    if (USE_DUMMY_POINTS) {
+      await sleep(600);
+      return DUMMY_TRANSACTIONS;
+    }
+    throw error;
+  }
 }
 
 export async function createPhotoProcess(userID:string,  beforeImageUrl: string) {
@@ -176,4 +219,3 @@ export async function getUserPointBalance(userID:string){
 
     return res.json();
 }
-

@@ -29,7 +29,7 @@ def publish_event():
     event = {
         "event_id" : str(uuid.uuid4()),
         "key" : "order.created", #binding key
-        "userId" : "temp-user-id", ##TODO CHANGE HERE
+        "userId" : "5662a8d4-3835-4712-9b64-97c4e434e70a", ##TODO CHANGE HERE
         "event_original_id" : "your id from your original table, on FE, this one for onclick and query"
     }
 ## Sample routing key, change according to your needs.

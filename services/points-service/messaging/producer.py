@@ -47,17 +47,13 @@ def publish_notification(user_id,trans_id,status):
 
     if status == "approved":
         key = "point.success"
-        msg = "Point awarded successfully"
     else:
         key = "point.failure"
-        msg = "Point awarded successfully"
-
     event = {
         "event_id" : str(uuid.uuid4()),
         "key" : key, #binding key
         "userId" : user_id,
         "event_original_id" : trans_id,
-        "message": msg
     }
 
     channel.basic_publish(

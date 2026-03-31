@@ -7,7 +7,13 @@ export interface PointTransaction {
   id: string;
   userId: string;
   amount: number;
-  type: "earned_meal_photo" | "earned_order_complete" | "redeemed";
+  type:
+    | "EARN"
+    | "REFUND"
+    | "SPEND"
+    | "earned_meal_photo"
+    | "earned_order_complete"
+    | "redeemed";
   description: string;
   createdAt: string;
 }
