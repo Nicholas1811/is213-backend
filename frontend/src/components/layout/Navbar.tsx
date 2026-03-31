@@ -28,7 +28,7 @@ export default function Navbar() {
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   // Authenticated state from Keycloak
-  const userId = resolveNotificationUserId(keycloak.subject);
+  const keycloakId = resolveNotificationUserId(keycloak.subject);
   const userName = (keycloak.tokenParsed as any)?.name || (keycloak.tokenParsed as any)?.preferred_username || "Guest";
   // Determine role from Keycloak realm roles
   const isKeycloakBuyer = keycloak.hasRealmRole("buyer");
@@ -40,7 +40,7 @@ export default function Navbar() {
       : "unknown";
   console.log(role)
   console.log(role)
-  console.log(userId);
+  console.log(keycloakId);
 
 
   const itemCount = useCartStore((s) => s.getItemCount());
@@ -53,7 +53,7 @@ export default function Navbar() {
   const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   const [notificationError, setNotificationError] = useState<string | null>(null);
   const handleEnableNotifications = async () => {
-    if (!userId) {
+    if (!keycloakId) {
       setNotificationError("User not authenticated");
       return;
     }
@@ -62,7 +62,7 @@ export default function Navbar() {
     setNotificationError(null);
 
     try {
-      let regValue = await registerNotificationToken(userId);
+      let regValue = await registerNotificationToken(keycloakId);
       console.log(regValue);
       setNotificationError(null);
     } catch (error) {
@@ -120,8 +120,8 @@ export default function Navbar() {
       return;
     }
 
-    void hydrateFromApi(userId);
-  }, [hydrateFromApi, initialized, userId]);
+    void hydrateFromApi(keycloakId);
+  }, [hydrateFromApi, initialized, keycloakId]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -172,7 +172,7 @@ export default function Navbar() {
             onOpenChange={(open) => {
               if (open) {
                 markAllAsRead();
-                void hydrateFromApi(userId);
+                void hydrateFromApi(keycloakId);
               }
             }}
           >
