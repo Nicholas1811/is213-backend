@@ -221,5 +221,5 @@ Cancel a listing. Sets status to `cancelled`.
 | `LOG_LEVEL` | `info` | Pino log level |
 | `RABBITMQ_URL` | `amqp://localhost:5672` | RabbitMQ connection URL |
 | `RABBITMQ_EXCHANGE` | `dev.events` | Exchange name |
-| `RABBITMQ_QUEUE` | `dev.listings.events` | Queue name |
+| `RABBITMQ_QUEUE` | `dev.listing.sync.q` | Queue name for processed listing events consumed by listing-service |
 | `RABBITMQ_PREFETCH` | `20` | Max unacked messages |

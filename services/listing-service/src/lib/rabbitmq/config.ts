@@ -5,6 +5,6 @@ export const rabbitConfig = {
   exchange: env.RABBITMQ_EXCHANGE,
   exchangeType: "topic" as const,
   queue: env.RABBITMQ_QUEUE,
-  routingKeys: ["listing.#"] as const,
+  routingKeys: ["listing.processed"] as const,
   prefetch: env.RABBITMQ_PREFETCH,
 } as const;
