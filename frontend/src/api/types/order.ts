@@ -48,12 +48,12 @@ export type PurchaseResponse = PurchaseStatusResponse | PurchaseCheckoutResponse
 
 export interface ApiUserOrderItem {
   id: string | number;
-  user_id: string;
-  listing_id: string | number;
+  userId: string;
+  listingId: string | number;
   status: string;
-  total_paid: number;
-  point_id?: string | number | null;
-  payment_id?: string | number | null;
+  totalPaid: number;
+  pointId?: string | number | null;
+  paymentId?: string | number | null;
   qty: number;
   created_at: string;
 }

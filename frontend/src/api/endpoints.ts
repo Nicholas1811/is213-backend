@@ -23,7 +23,7 @@ export const ENDPOINTS = {
   // Order Service
   ORDERS: `${API_GATEWAY_BASE}/orders`,
   ORDER_BY_ID: (id: string) => `${API_GATEWAY_BASE}/orders/${id}`,
-  ORDERS_BY_USER: (userId: string) => `${API_GATEWAY_BASE}/orders/user/.${encodeURIComponent(userId)}`,
+  ORDERS_BY_USER: (userId: string) => `${API_GATEWAY_BASE}/orders/user/${encodeURIComponent(userId)}`,
   CREATE_ORDER: `${API_GATEWAY_BASE}/orders`,
 
   // Points Service

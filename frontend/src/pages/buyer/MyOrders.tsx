@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Package, Eye, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Package, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { useKeycloak } from "@react-keycloak/web";
 import { getOrdersByUser } from "@/api/orderEndpoints";
-import type { Order } from "@/api/types/order";
+import type { ApiUserOrderItem } from "@/api/types/order";
 
 const statusConfig = {
   pending: { label: "Pending", icon: Clock, variant: "secondary" as const },
@@ -23,9 +23,24 @@ const statusConfig = {
   cancelled: { label: "Cancelled", icon: XCircle, variant: "destructive" as const },
 };
 
+function normalizeOrderStatus(status: string): keyof typeof statusConfig {
+  const normalized = status.toLowerCase();
+
+  if (normalized === "confirmed" || normalized === "paid") return "confirmed";
+  if (normalized === "completed" || normalized === "delivered") return "completed";
+  if (normalized === "cancelled" || normalized === "canceled" || normalized === "failed") {
+    return "cancelled";
+  }
+  return "pending";
+}
+
+function toMoney(value: number): string {
+  return Number.isFinite(value) ? `$${value.toFixed(2)}` : "$0.00";
+}
+
 export default function MyOrders() {
   const { keycloak, initialized } = useKeycloak();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<ApiUserOrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,59 +143,35 @@ export default function MyOrders() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Total</TableHead>
+                  <TableHead>Order ID</TableHead>
+                  <TableHead>Listing ID</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Points</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Total Paid</TableHead>
+                  <TableHead>Point ID</TableHead>
+                  <TableHead>Payment ID</TableHead>
+                  <TableHead>Quantity</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.map((order) => {
-                  const config = statusConfig[order.status];
+                  const normalized = normalizeOrderStatus(order.status || "pending");
+                  const config = statusConfig[normalized];
                   const StatusIcon = config.icon;
-
+                  console.log(order)
                   return (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">
-                        {order.id.slice(0, 10)}...
-                      </TableCell>
-                      <TableCell>
-                        {order.items.map((item) => (
-                          <div key={`${item.listingId}-${item.quantity}`} className="text-sm">
-                            {item.listingName} x{item.quantity}
-                          </div>
-                        ))}
-                      </TableCell>
-                      <TableCell>${order.total.toFixed(2)}</TableCell>
+                    <TableRow key={String(order.id)}>
+                      <TableCell>{String(order.id)}</TableCell>
+                      <TableCell>{String(order.listingId)}</TableCell>
                       <TableCell>
                         <Badge variant={config.variant} className="gap-1">
                           <StatusIcon className="h-3 w-3" />
-                          {config.label}
+                          {order.status || config.label}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {order.pointsEarned > 0 ? (
-                          <span className="text-primary font-medium">
-                            +{order.pointsEarned}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Link to={`/buyer/orders/${order.id}`}>
-                          <Button variant="ghost" size="sm" className="gap-1">
-                            <Eye className="h-3 w-3" />
-                            View
-                          </Button>
-                        </Link>
-                      </TableCell>
+                      <TableCell>{toMoney(Number(order.totalPaid/ 100))}</TableCell>
+                      <TableCell>{order.pointId == null ? "-" : String(order.pointId)}</TableCell>
+                      <TableCell>{order.paymentId == null ? "-" : String(order.paymentId)}</TableCell>
+                      <TableCell>{Number(order.qty) || 0}</TableCell>
                     </TableRow>
                   );
                 })}
