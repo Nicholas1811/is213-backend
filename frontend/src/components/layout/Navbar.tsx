@@ -31,8 +31,8 @@ export default function Navbar() {
   const userName = (keycloak.tokenParsed as any)?.name || (keycloak.tokenParsed as any)?.preferred_username || "Guest";
   
   // Determine role from Keycloak realm roles
-  const isKeycloakBuyer = keycloak.hasRealmRole("Buyer");
-  const isKeycloakSeller = keycloak.hasRealmRole("Seller");
+  const isKeycloakBuyer = keycloak.hasRealmRole("buyer");
+  const isKeycloakSeller = keycloak.hasRealmRole("seller");
   const role = isKeycloakBuyer
     ? UserRole.BUYER 
     : isKeycloakSeller 
