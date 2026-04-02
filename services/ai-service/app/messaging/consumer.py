@@ -50,8 +50,7 @@ class Consumer:
         )
 
     async def _handle_message(self, message: AbstractIncomingMessage) -> None:
-
-        async with message.process(requeue=False):
+        try:
             payload = json.loads(message.body.decode("utf-8"))
             logger.info(
                 "Received message queue_name=%s routing_key=%s",
@@ -59,3 +58,20 @@ class Consumer:
                 message.routing_key,
             )
             await self.handler(payload)
+            await message.ack()
+        except json.JSONDecodeError:
+            logger.exception(
+                "Invalid JSON payload queue_name=%s routing_key=%s",
+                self.queue_name,
+                message.routing_key,
+            )
+            await message.reject(requeue=False)
+        except Exception:
+            should_requeue = not message.redelivered
+            logger.exception(
+                "Failed to process message queue_name=%s routing_key=%s requeue=%s",
+                self.queue_name,
+                message.routing_key,
+                should_requeue,
+            )
+            await message.reject(requeue=should_requeue)
