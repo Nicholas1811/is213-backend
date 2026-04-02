@@ -133,6 +133,7 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: ai-service
+    restart: unless-stopped
     env_file:
       - ./.env
     expose:
@@ -160,10 +161,10 @@ services:
     container_name: refund-service
     expose:
       - "8080"
-    networks:                 
+    networks:
       - temporal-network
       - default
-    depends_on:                
+    depends_on:
       - temporal
       - point-service
       - payment-service
@@ -181,7 +182,6 @@ services:
       - temporal-network
     depends_on:
       - temporal
-    
 
   purchase-worker:
     build:

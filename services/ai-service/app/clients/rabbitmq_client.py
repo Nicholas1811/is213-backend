@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import aio_pika
@@ -9,7 +10,12 @@ from aio_pika.abc import (
     AbstractRobustConnection,
 )
 
-from app.config import RABBITMQ_PREFETCH, RABBITMQ_URL
+from app.config import (
+    RABBITMQ_CONNECT_MAX_RETRIES,
+    RABBITMQ_CONNECT_RETRY_DELAY,
+    RABBITMQ_PREFETCH,
+    RABBITMQ_URL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +37,26 @@ class RabbitMQClient:
         if self.connection is not None:
             return
 
-        self.connection = await aio_pika.connect_robust(self.url)
-        logger.info("Connected to RabbitMQ")
-        self.channel = await self.connection.channel()
-        await self.channel.set_qos(prefetch_count=RABBITMQ_PREFETCH)
+        attempt = 0
+        while True:
+            try:
+                self.connection = await aio_pika.connect_robust(self.url)
+                logger.info("Connected to RabbitMQ")
+                self.channel = await self.connection.channel()
+                await self.channel.set_qos(prefetch_count=RABBITMQ_PREFETCH)
+                return
+            except Exception:
+                attempt += 1
+                if RABBITMQ_CONNECT_MAX_RETRIES > 0 and attempt >= RABBITMQ_CONNECT_MAX_RETRIES:
+                    logger.exception("Failed to connect to RabbitMQ after %s attempts", attempt)
+                    raise
+
+                logger.warning(
+                    "RabbitMQ unavailable, retrying in %ss (attempt=%s)",
+                    RABBITMQ_CONNECT_RETRY_DELAY,
+                    attempt,
+                )
+                await asyncio.sleep(RABBITMQ_CONNECT_RETRY_DELAY)
 
     async def get_exchange(
         self,
