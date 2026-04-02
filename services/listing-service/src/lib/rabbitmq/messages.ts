@@ -34,6 +34,13 @@ export const listingEventSchema = z.object({
 
 export type ListingEvent = z.infer<typeof listingEventSchema>;
 
+export const listingProcessedEventSchema = listingEventSchema.extend({
+  eventName: z.literal("listing.processed"),
+  source: z.literal("ai-service"),
+});
+
+export type ListingProcessedEvent = z.infer<typeof listingProcessedEventSchema>;
+
 interface CreateListingEventInput {
   eventName: ListingEventName;
   data: z.infer<typeof listingSnapshotSchema>;

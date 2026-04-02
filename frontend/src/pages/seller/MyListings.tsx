@@ -47,7 +47,6 @@ import {
 } from "@/components/ui/select";
 import apiClient from "@/api/client";
 import { ENDPOINTS } from "@/api/endpoints";
-import { fetchImageUrl } from "@/api/s3";
 
 interface ApiListing {
   id: number;
@@ -93,7 +92,7 @@ function ViewModal({
   onClose,
 }: {
   listing: ApiListing;
-  imageUrl: string | undefined;
+  imageUrl: string | null;
   onClose: () => void;
 }) {
   return (
@@ -326,7 +325,6 @@ export default function MyListings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [listings, setListings] = useState<ApiListing[]>([]);
-  const [imageUrls, setImageUrls] = useState<Record<number, string>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   const [viewListing, setViewListing] = useState<ApiListing | null>(null);
@@ -335,23 +333,9 @@ export default function MyListings() {
 
   useEffect(() => {
     setIsLoading(true);
-    setImageUrls({});
     fetchListings(statusFilter)
-      .then(async (data) => {
+      .then((data) => {
         setListings(data);
-        const urlMap: Record<number, string> = {};
-        await Promise.all(
-          data
-            .filter((l) => l.imageUrl)
-            .map(async (l) => {
-              try {
-                urlMap[l.id] = await fetchImageUrl(l.imageUrl!);
-              } catch {
-                // ignore failed image fetches
-              }
-            })
-        );
-        setImageUrls(urlMap);
       })
       .catch((err) => console.error("Failed to load listings", err))
       .finally(() => setIsLoading(false));
@@ -455,14 +439,12 @@ export default function MyListings() {
                 {filteredListings.map((listing) => (
                   <TableRow key={listing.id}>
                     <TableCell>
-                      {imageUrls[listing.id] ? (
+                      {listing.imageUrl ? (
                         <img
-                          src={imageUrls[listing.id]}
+                          src={listing.imageUrl}
                           alt={listing.name ?? "Listing"}
                           className="h-10 w-10 rounded-md object-cover"
                         />
-                      ) : listing.imageUrl ? (
-                        <Skeleton className="h-10 w-10 rounded-md" />
                       ) : (
                         <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
                           <ImageIcon className="h-4 w-4 text-muted-foreground" />
@@ -557,7 +539,7 @@ export default function MyListings() {
       {viewListing && (
         <ViewModal
           listing={viewListing}
-          imageUrl={imageUrls[viewListing.id]}
+          imageUrl={viewListing.imageUrl}
           onClose={() => setViewListing(null)}
         />
       )}

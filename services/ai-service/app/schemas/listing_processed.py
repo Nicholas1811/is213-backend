@@ -1,13 +1,16 @@
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class ListingProcessedData(BaseModel):
     id: int
-    s3ImageUrl: str
+    s3ImageUrl: str = Field(
+        validation_alias=AliasChoices("s3ImageUrl", "imageUrl"),
+        serialization_alias="imageUrl",
+    )
     name: str
     description: str
     qty: int
-    unitPriceCents: int
+    unitPriceCents: int | None = None
     status: str
     bestBefore: str | None = None
     createdAt: str

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 import stripe
+import time
 from pydantic import BaseModel, field_validator
 import os
 from sqlalchemy.orm import Session
@@ -8,10 +9,14 @@ from db_actions.service import create_payment, get_payment_by_id
 from db_actions.db import SessionLocal, engine, Base
 from datetime import datetime
 
+from temporalio.client import Client
+
 app = FastAPI()
 router = APIRouter()
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 stripe.webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+
+
 
 # set up db
 Base.metadata.create_all(bind=engine)
@@ -31,13 +36,29 @@ class CheckoutRequest(BaseModel):
     order_id: int
     quantity_to_update: int
     points_changed: int
+    workflow_id: str
+
+
+#Set up temporal connection 
+temporal_client = None
+
+@app.on_event("startup")
+async def startup_event():
+    global temporal_client
+    try:
+        temporal_client = await Client.connect("temporal:7233")
+        print("--- TEMPORAL CLIENT CONNECTED AT STARTUP ---")
+    except Exception as e:
+        print(f"--- FAILED TO CONNECT TEMPORAL AT STARTUP: {e} ---")
 
 
 @router.post("/process-payment")
 async def process_payment(checkout_request: CheckoutRequest):
+    expiry_time = int(time.time()) + (30 * 60)
     try:
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=["card"],
+            expires_at=expiry_time,
             line_items=[{
                 "price_data": {
                     "currency": "sgd",
@@ -57,7 +78,8 @@ async def process_payment(checkout_request: CheckoutRequest):
                 "listing_id": checkout_request.listing_id,
                 "quantity": checkout_request.quantity_to_update,
                 "points_changed": checkout_request.points_changed,
-                "order_id": checkout_request.order_id
+                "order_id": checkout_request.order_id,
+                "workflow_id": checkout_request.workflow_id
             }
         )
         return {"checkout_url": checkout_session.url, "checkout_id" : checkout_session.id}
@@ -69,7 +91,6 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()
     sig_header = request.headers.get('stripe-signature')
     try:
-        # Verify webhook signature. This ensures the call really comes from Stripe
         event = stripe.Webhook.construct_event(
             payload, sig_header, stripe.webhook_secret
         )
@@ -78,19 +99,35 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
+    print(f"--- WEBHOOK RECEIVED: {event['type']} ---")
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         
-        payment_stripe_id = session.get("id")
-        payment_intent_id = session.get("payment_intent")
-        metadata = session.get("metadata", {})
+        payment_stripe_id = session.id
+        payment_intent_id = session.payment_intent
+        metadata = getattr(session, 'metadata', {})
+        
+        workflow_id = getattr(metadata, "workflow_id", None)
+
+        print(f"--- WORKFLOW ID FOUND: {workflow_id} ---")
+        if workflow_id:
+            try:
+                print(f"--- ATTEMPTING SIGNAL TO: {workflow_id} ---")
+                if temporal_client:
+                    handle = temporal_client.get_workflow_handle(workflow_id)
+                    await handle.signal("confirm_payment")
+                    print("--- SIGNAL SENT SUCCESSFULLY ---")
+                else:
+                    print("--- ERROR: Temporal client not initialized ---")
+            except Exception as e:
+                print(f"Failed to signal Temporal: {e}")
 
         new_payment = Payment(
                 payment_stripe_id=payment_stripe_id,
-                user_id=metadata.get("user_id"),
+                user_id=getattr(metadata, "user_id", None),
                 payment_intent_id=payment_intent_id,
-                listing_id=int(metadata.get("listing_id", 0)),
-                quantity=int(metadata.get("quantity", 0)),
+                listing_id=int(getattr(metadata, "listing_id", 0)),
+                quantity=int(getattr(metadata, "quantity", 0)),
                 payment_created=datetime.now(),
                 payment_updated=datetime.now()
             )

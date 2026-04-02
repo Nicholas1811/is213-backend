@@ -1,9 +1,11 @@
 from email.feedparser import NeedMoreData
 
 from temporalio import workflow
+from temporalio.exceptions import ApplicationError
 from datetime import timedelta
 from temporalio.common import RetryPolicy
 import uuid
+import asyncio 
 
 with workflow.unsafe.imports_passed_through():
     from activities.get_listing_price import purchase_listing, reset_listing
@@ -16,9 +18,21 @@ retry_policy = RetryPolicy(
     maximum_attempts=5,
 )
 
-
 @workflow.defn
 class PurchaseWorkflow:
+    
+    def __init__(self):
+        self._payment_confirmed = False
+        self._checkout_url = None
+
+    @workflow.signal
+    def confirm_payment(self):
+        self._payment_confirmed = True
+
+    @workflow.query
+    def get_checkout_url(self):
+        return self._checkout_url
+
     @workflow.run
     async def run(self, data):
         sample_order_ref = str(workflow.uuid4())
@@ -31,7 +45,6 @@ class PurchaseWorkflow:
         order_id = None
         try:
             ## Listing here will lower the numbers.
-
             ##Okay over here.
             listing = await workflow.execute_activity(
                 purchase_listing,
@@ -162,6 +175,7 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
+                
                 order_update = await workflow.execute_activity(
                     update_order_paymentId,
                     {
@@ -171,7 +185,25 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy)
                 print(order_update, flush=True)
-                return payment_id
+                
+                #pause logic here
+                self._checkout_url = payment_id['checkout_url'] 
+
+                #Pause the workflow and wait for Webhook signal and also the timeout if user take too long to reply
+                await workflow.wait_condition(
+                    lambda: self._payment_confirmed,
+                    timeout=timedelta(minutes=31)
+                )
+
+                await workflow.execute_activity(
+                    update_order_status,
+                    {"order_id": order_id},
+                    start_to_close_timeout=timedelta(seconds=10),
+                    retry_policy=retry_policy
+                )
+                
+                return {"status": "Order fully paid and finalized!", "payment_id": payment_id['checkout_id']}
+                
             else:
                 await workflow.execute_activity(
                     update_order_status,
@@ -213,4 +245,7 @@ class PurchaseWorkflow:
                 except Exception as comp_err:
                     workflow.logger.error(f"Compensation failed for {action}: {comp_err}")
 
-            raise
+            # raise ApplicationError(
+            #     f"Workflow failed: Rollback of everything {str(e)}", 
+            #     non_retryable=True
+            # )

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MAX_AI_LISTINGS } from "@/lib/constants";
-import { uploadImageToS3 } from "@/api/s3";
+import { fetchImageUrl, uploadImageToS3 } from "@/api/s3";
 import { batchCreateListings } from "@/api/listingEndpoints";
 
 type FlowStep = "upload" | "processing";
@@ -220,7 +220,8 @@ export default function AIListingFlow() {
       let completed = 0;
       const imageUrls = await Promise.all(
         images.map(async ({ file }) => {
-          const url = await uploadImageToS3(file);
+          const key = await uploadImageToS3(file);
+          const url = await fetchImageUrl(key);
           completed++;
           setProgress((completed / images.length) * 100);
           return url;

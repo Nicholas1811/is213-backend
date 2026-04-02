@@ -3,7 +3,7 @@ import { appLogger } from "@/middlewares/pino-logger";
 import { syncListingFromEvent } from "@/services/listings.service";
 import { rabbitConfig } from "./config";
 import { getRabbitConnection } from "./connection";
-import { listingEventSchema } from "./messages";
+import { listingProcessedEventSchema } from "./messages";
 import { assertTopology } from "./topology";
 
 const logger = appLogger.child({ module: "rabbitmq-consumer" });
@@ -23,7 +23,7 @@ async function ensureTopology(channel: Channel): Promise<void> {
 async function processMessage(channel: Channel, message: ConsumeMessage): Promise<void> {
   try {
     const raw = JSON.parse(message.content.toString("utf-8")) as unknown;
-    const parsed = listingEventSchema.safeParse(raw);
+    const parsed = listingProcessedEventSchema.safeParse(raw);
 
     if (!parsed.success) {
       logger.warn({

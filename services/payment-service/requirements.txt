@@ -9,3 +9,4 @@ python-dotenv
 uvicorn
 sqlalchemy
 psycopg2-binary
+temporalio

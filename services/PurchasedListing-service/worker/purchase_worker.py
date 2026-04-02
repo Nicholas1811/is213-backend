@@ -8,6 +8,8 @@ from activities.payment_activity import charge_payment
 from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId, update_order_pointId
 
 
+temporal_client = None
+
 #In this method, we define a worker, in which it needs a workflow and the acitvities to pump the activities into the workflow.
 async def connect_temporal():
     global temporal_client
