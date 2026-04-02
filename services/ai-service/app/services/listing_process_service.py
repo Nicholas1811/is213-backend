@@ -39,6 +39,7 @@ class ListingProcessService:
             .isoformat(timespec="milliseconds")
             .replace("+00:00", "Z")
         )
+        created_at = request.data.createdAt or request.occurredAt or new_timestamp
 
         response = ListingProcessResponse(
             eventId=str(uuid4()),
@@ -56,7 +57,7 @@ class ListingProcessService:
                 unitPriceCents=request.data.unitPriceCents,
                 status="processed",
                 bestBefore=request.data.bestBefore,
-                createdAt=request.data.createdAt,
+                createdAt=created_at,
                 updatedAt=new_timestamp,
             ),
         )

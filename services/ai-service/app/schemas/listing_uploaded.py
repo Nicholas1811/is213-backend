@@ -1,17 +1,19 @@
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class ListingUploadData(BaseModel):
     id: int
-    s3ImageUrl: str
+    s3ImageUrl: str = Field(
+        validation_alias=AliasChoices("s3ImageUrl", "imageUrl"),
+    )
     name: str | None = None
     description: str | None = None
-    qty: int
-    unitPriceCents: int
-    status: str
+    qty: int = 0
+    unitPriceCents: int | None = None
+    status: str | None = None
     bestBefore: str | None = None
-    createdAt: str
-    updatedAt: str
+    createdAt: str | None = None
+    updatedAt: str | None = None
 
 
 class ListingUploadRequest(BaseModel):
