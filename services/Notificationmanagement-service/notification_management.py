@@ -188,6 +188,10 @@ def event_dictionary(event):
             "title" : "Purchase success",
             "body" : f"Your purchase is done. The order is id is {event['event_original_id']}. To view more, click on me!"
         },
+        'order.cancelled':{
+            "title" : "Order cancelled",
+            "body" : f"Your purchase is done. The order is id is {event['event_original_id']}. To view more, click on me!"
+        },
 
     }
     return sample_dict.get(eventKey, {
