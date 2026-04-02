@@ -152,5 +152,18 @@ export const cancel: AppRouteHandler<CancelRoute> = async (c) => {
     }, HttpStatusCodes.NOT_FOUND);
   }
 
+  const event = createListingEvent({
+    eventName: "listing.cancelled",
+    data: cancelledListing,
+  });
+  const published = await publishListingEvent(event);
+
+  if (!published) {
+    logger.warn({
+      listingId: cancelledListing.id,
+      eventName: event.eventName,
+    }, "Listing cancelled but event publish failed");
+  }
+
   return c.json(cancelledListing, HttpStatusCodes.OK);
 };
