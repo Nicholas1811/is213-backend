@@ -7,7 +7,7 @@ expand(config());
 const EnvSchema = z.object({
   NODE_ENV: z.string().default("development"),
   PORT: z.coerce.number().default(9999),
-  DATABASE_URL: z.string(),
+  LISTING_DATABASE_URL: z.string(),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
   RABBITMQ_URL: z.string().default("amqp://localhost:5672"),
   RABBITMQ_EXCHANGE: z.string().default("dev.events"),
