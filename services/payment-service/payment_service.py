@@ -1,9 +1,11 @@
+import json
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 import stripe
 import time
 from pydantic import BaseModel, field_validator
 import os
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from db_actions.model import Payment
 from db_actions.service import create_payment, get_payment_by_id
 from db_actions.db import SessionLocal, engine, Base
@@ -70,8 +72,8 @@ async def process_payment(checkout_request: CheckoutRequest):
                 "quantity": 1
             }],
             mode="payment",
-            success_url="http://localhost:8000/payment/payment-success?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url="http://localhost:8000/payment/payment-failed",
+            success_url="http://localhost:5173/buyer/orders",
+            cancel_url="http://localhost:5173/buyer/orders",
             metadata={
                 "user_id": checkout_request.user_id,
                 "price": checkout_request.price,
@@ -99,15 +101,18 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
-    print(f"--- WEBHOOK RECEIVED: {event['type']} ---")
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
+    # Parse the raw payload as a plain dict to avoid StripeObject quirks
+    raw_event = json.loads(payload)
+
+    print(f"--- WEBHOOK RECEIVED: {raw_event['type']} ---")
+    if raw_event['type'] == 'checkout.session.completed':
+        session = raw_event['data']['object']
         
-        payment_stripe_id = session.id
-        payment_intent_id = session.payment_intent
-        metadata = getattr(session, 'metadata', {})
+        payment_stripe_id = session.get("id")
+        payment_intent_id = session.get("payment_intent")
+        metadata = session.get("metadata", {})
         
-        workflow_id = getattr(metadata, "workflow_id", None)
+        workflow_id = metadata.get("workflow_id")
 
         print(f"--- WORKFLOW ID FOUND: {workflow_id} ---")
         if workflow_id:
@@ -124,10 +129,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
         new_payment = Payment(
                 payment_stripe_id=payment_stripe_id,
-                user_id=getattr(metadata, "user_id", None),
+                user_id=metadata.get("user_id"),
                 payment_intent_id=payment_intent_id,
-                listing_id=int(getattr(metadata, "listing_id", 0)),
-                quantity=int(getattr(metadata, "quantity", 0)),
+                listing_id=int(metadata.get("listing_id", 0)),
+                quantity=int(metadata.get("quantity", 0)),
                 payment_created=datetime.now(),
                 payment_updated=datetime.now()
             )
@@ -140,20 +145,24 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     return {"status": "success"}
 
 class RefundRequest(BaseModel):
-    payment_intent_id: str
+    payment_checkout_id: str
 
     #check with db - to be implemented
-    @field_validator('payment_intent_id')
+    @field_validator('payment_checkout_id')
     def checkPaymentId(cls, v):
         if not v:
-            raise ValueError("Payment Intent ID must be provided")
+            raise ValueError("Payment Checkout ID must be provided")
         return v
 
 @router.post("/refund")
-async def refund_payment(refund_request: RefundRequest):
+async def refund_payment(refund_request: RefundRequest, db: Session = Depends(get_db)):
+    # pass in parent checkout id to get the payment intent id
+    payment_intent_id = db.execute(select(Payment.payment_intent_id).where(Payment.payment_stripe_id == refund_request.payment_checkout_id)).scalars().first()
+    if not payment_intent_id:
+        raise HTTPException(status_code=404, detail="Payment not found")
     try:
         refund = stripe.Refund.create(
-            payment_intent=refund_request.payment_intent_id
+            payment_intent=payment_intent_id
         )
         return {"refund_id": refund.id, "status": refund.status}
     except Exception as e:

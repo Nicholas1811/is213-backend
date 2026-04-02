@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCartStore, type CartItem } from "@/store/cartStore";
 import apiClient from "@/api/client";
 import { ENDPOINTS } from "@/api/endpoints";
 import { fetchImageUrl } from "@/api/s3";
@@ -36,7 +35,6 @@ export default function Marketplace() {
   const [listings, setListings] = useState<ApiListing[]>([]);
   const [imageUrls, setImageUrls] = useState<Record<number, string>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const addItem = useCartStore((s) => s.addItem);
 
   useEffect(() => {
     setIsLoading(true);
@@ -78,20 +76,6 @@ export default function Marketplace() {
       // newest: default API order (createdAt desc)
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-
-  function handleAddToCart(listing: ApiListing) {
-    const unitPrice = (listing.unitPriceCents ?? 0) / 100;
-    const item: CartItem = {
-      listingId: String(listing.id),
-      name: listing.name ?? "Untitled",
-      imageUrl: imageUrls[listing.id] ?? "",
-      unitPrice,
-      originalPrice: unitPrice,
-      quantity: 1,
-      maxQuantity: listing.qty,
-    };
-    addItem(item);
-  }
 
   return (
     <div className="space-y-6">
@@ -193,14 +177,15 @@ export default function Marketplace() {
               </CardContent>
 
               <CardFooter className="pt-0">
-                <Button
-                  className="w-full gap-2"
-                  disabled={listing.qty === 0}
-                  onClick={() => handleAddToCart(listing)}
-                >
-                  <ShoppingBag className="h-4 w-4" />
-                  {listing.qty === 0 ? "Sold Out" : "Add to Cart"}
-                </Button>
+                <Link to={`/buyer/marketplace/${listing.id}`} className="w-full">
+                  <Button
+                    className="w-full gap-2"
+                    disabled={listing.qty === 0}
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    {listing.qty === 0 ? "Sold Out" : "View Details"}
+                  </Button>
+                </Link>
               </CardFooter>
             </Card>
           ))}

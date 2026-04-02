@@ -11,8 +11,6 @@ import EarnPoints from "@/pages/buyer/EarnPoints";
 import MyOrders from "@/pages/buyer/MyOrders";
 import OrderDetail from "@/pages/buyer/OrderDetail";
 import PointsHistory from "@/pages/buyer/PointsHistory";
-import Cart from "@/pages/buyer/Cart";
-import Checkout from "@/pages/buyer/Checkout";
 import SellerHome from "@/pages/seller/SellerHome";
 import CreateListing from "@/pages/seller/CreateListing";
 import ManualListingForm from "@/pages/seller/ManualListingForm";
@@ -64,14 +62,6 @@ export const router = createBrowserRouter([
           {
             path: "points",
             element: <PointsHistory />,
-          },
-          {
-            path: "cart",
-            element: <Cart />,
-          },
-          {
-            path: "checkout",
-            element: <Checkout />,
           },
         ],
       },

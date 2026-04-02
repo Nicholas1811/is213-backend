@@ -184,8 +184,12 @@ services:
       - "8080"
     networks:
       - temporal-network
+      - default
     depends_on:
       - temporal
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
 
   purchase-worker:
     build:
@@ -282,7 +286,7 @@ services:
     command: >
       listen
       --api-key ${STRIPE_SECRET_KEY}
-      --forward-to http://localhost:8000/payment/webhook
+      --forward-to http://payment-service:8080/webhook
     env_file:
       - ./.env
     depends_on:

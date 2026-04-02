@@ -57,6 +57,12 @@ channel.queue_bind(
 
 channel.queue_bind(
     exchange="notification-exchange",
+    queue="notification.queue",
+    routing_key="#.cancelled"
+)
+
+channel.queue_bind(
+    exchange="notification-exchange",
     queue="notification.dlq",
     routing_key="deadletter"
 )
