@@ -11,7 +11,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-load_dotenv()
+load_dotenv("../.env")
 
 app = Flask(__name__)
 

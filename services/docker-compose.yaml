@@ -5,7 +5,7 @@ services:
     container_name: notification-mgmt-service
     command: python consumer.py
     env_file:
-      - ./Notificationmanagement-service/.env
+      - ./.env
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: guest
@@ -27,7 +27,7 @@ services:
       context: .
       dockerfile: keycloak-user-sync-listener/Dockerfile
     env_file:
-      - ./user-service/.env
+      - ./.env
     command:
       - start-dev
       - --spi-events-listener-user-sync-listener-callback-url=http://user-service:8080/events/keycloak
@@ -51,7 +51,7 @@ services:
       dockerfile: Dockerfile
     container_name: user-service
     env_file:
-      - ./user-service/.env
+      - ./.env
     expose:
       - "8080"
 
@@ -61,7 +61,7 @@ services:
       dockerfile: Dockerfile
     container_name: payment-service
     env_file:
-      - ./payment-service/.env
+      - ./.env
     expose:
       - "8080"
     networks:
@@ -74,7 +74,7 @@ services:
       dockerfile: Dockerfile
     container_name: listing-service
     env_file:
-      - ./listing-service/.env
+      - ./.env
     expose:
       - "8080"
     networks:
@@ -89,7 +89,7 @@ services:
       dockerfile: Dockerfile
     container_name: order-service
     env_file:
-      - ./order-service/.env
+      - ./.env
     expose:
       - "8080"
     networks:
@@ -102,7 +102,7 @@ services:
       dockerfile: Dockerfile
     container_name: point-service
     env_file:
-      - ./points-service/.env
+      - ./.env
     expose:
       - "8080"
     networks:
@@ -133,7 +133,7 @@ services:
       dockerfile: Dockerfile
     container_name: ai-service
     env_file:
-     - ./ai-service/.env
+      - ./.env
     expose:
       - "8080"
     depends_on:
