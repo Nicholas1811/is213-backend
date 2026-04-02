@@ -275,7 +275,7 @@ services:
       - temporal-network
     ports:
       - 8090:8080 # use 8090 to avoid conflict with other services
-      -
+
   stripe-cli:
     image: stripe/stripe-cli:latest
     container_name: stripe-cli
