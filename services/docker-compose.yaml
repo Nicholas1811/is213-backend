@@ -11,7 +11,8 @@ services:
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   mock_producer:
     build: ./mock-producer
@@ -20,7 +21,8 @@ services:
     ports:
       - "9000:8080"
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   keycloak-esd:
     build:
@@ -122,8 +124,10 @@ services:
     # env_file:
     #   - ./points-service/.env
     depends_on:
-      - rabbitmq
-      - point-service
+      rabbitmq:
+        condition: service_healthy
+      point-service:
+        condition: service_started
     networks:
       - temporal-network
       - default
