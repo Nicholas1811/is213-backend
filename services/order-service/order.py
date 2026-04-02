@@ -193,19 +193,33 @@ def update_order(order_id: int) -> tuple[dict[str, Any], int]:
 		return {"error": f"Failed to update order: {error}"}, 500
 
 
-@app.delete("/<int:order_id>")
-def delete_order(order_id: int) -> tuple[dict[str, str], int]:
+@app.put("/cancel/<int:order_id>")
+def update_order_status(order_id: int) -> tuple[dict[str, str], int]:
 	try:
 		with _db_engine().begin() as connection:
-			result = connection.execute(
-				text("DELETE FROM orders WHERE id = :id"),
+			# Step 1: Select the data so we know what to publish
+			select_result = connection.execute(
+				text("SELECT * FROM orders WHERE id = :id"),
 				{"id": order_id},
 			)
-			if result.rowcount == 0:
+			row = select_result.mappings().first()
+			if not row:
 				return {"error": "Order not found"}, 404
-			return {"status": "deleted"}, 200
-	except SQLAlchemyError as error:
-		return {"error": f"Failed to delete order: {error}"}, 500
+
+			# Step 2: Publish to refund service first
+			from producer import publish_to_refund
+			publish_to_refund(order_id, row.listing_id, row.user_id, row.total_paid, row.point_id, row.payment_id)
+
+
+			# Step 3: Perform the update
+			connection.execute(
+				text("UPDATE orders SET status = 'CANCELLED' WHERE id = :id"),
+				{"id": order_id},
+			)
+
+			return {"status": "cancelled"}, 200	
+	except Exception as e:
+		return {"error": f"Failed to cancel order: {e}"}, 500
 
 @app.get("/user/<string:user_id>")
 def get_orders_by_user(user_id: str) -> tuple[dict[str, Any], int]:
@@ -231,6 +245,20 @@ def get_orders_by_user(user_id: str) -> tuple[dict[str, Any], int]:
 
 	except SQLAlchemyError as error:
 		return {"error": f"Failed to query user orders: {error}"}, 500
+
+@app.delete("/<int:order_id>")
+def delete_order(order_id: int) -> tuple[dict[str, str], int]:
+	try:
+		with _db_engine().begin() as connection:
+			result = connection.execute(
+				text("DELETE FROM orders WHERE id = :id"),
+				{"id": order_id},
+			)
+			if result.rowcount == 0:
+				return {"error": "Order not found"}, 404
+			return {"status": "deleted"}, 200
+	except SQLAlchemyError as error:
+		return {"error": f"Failed to delete order: {error}"}, 500
 
 
 if __name__ == "__main__":

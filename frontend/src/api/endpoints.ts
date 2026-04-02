@@ -25,6 +25,8 @@ export const ENDPOINTS = {
   ORDER_BY_ID: (id: string) => `${API_GATEWAY_BASE}/orders/${id}`,
   ORDERS_BY_USER: (userId: string) => `${API_GATEWAY_BASE}/orders/user/${encodeURIComponent(userId)}`,
   CREATE_ORDER: `${API_GATEWAY_BASE}/orders`,
+  CANCEL_ORDER: (id: string) => `${API_GATEWAY_BASE}/orders/cancel/${id}`,
+  DELETE_ORDER: (id: string) => `${API_GATEWAY_BASE}/orders/${id}`,
 
   // Points Service
   POINTS_BALANCE: `${API_GATEWAY_BASE}/points/balance`,

@@ -2,6 +2,7 @@ import asyncio
 from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
+from class_model.input_model import RefundRequest
 
 with workflow.unsafe.imports_passed_through():
     from activities.payment_activity import refund_payment

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { ShoppingCart, Leaf, User, LogOut, Coins, Package, Home, Bell } from "lucide-react";
+import { Leaf, User, LogOut, Coins, Package, Home, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useCartStore } from "@/store/cartStore";
 import { usePointsStore } from "@/store/pointsStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { APP_SHORT_NAME, UserRole } from "@/lib/constants";
@@ -43,7 +42,6 @@ export default function Navbar() {
   console.log(keycloakId);
 
 
-  const itemCount = useCartStore((s) => s.getItemCount());
   const balance = usePointsStore((s) => s.balance);
   const notifications = useNotificationStore((s) => s.notifications);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
@@ -215,20 +213,6 @@ export default function Navbar() {
                 <Coins className="h-3 w-3" />
                 {balance} pts
               </Badge>
-            </Link>
-          )}
-
-          {/* Cart (buyer only) */}
-          {isBuyer && (
-            <Link to="/buyer/cart" className="relative">
-              <Button variant="ghost" size="icon">
-                <ShoppingCart className="h-5 w-5" />
-              </Button>
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
-                  {itemCount}
-                </span>
-              )}
             </Link>
           )}
 
