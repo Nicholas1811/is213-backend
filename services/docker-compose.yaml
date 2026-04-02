@@ -276,6 +276,20 @@ services:
     ports:
       - 8090:8080 # use 8090 to avoid conflict with other services
 
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: stripe-cli
+    command: >
+      listen
+      --api-key ${STRIPE_SECRET_KEY}
+      --forward-to http://localhost:8000/payment/webhook
+    env_file:
+      - ./.env
+    depends_on:
+      - payment-service
+    networks:
+      - default
+      - temporal-network
   ## == KONG API GATEWAY ==
   kong:
     image: kong:latest # Kong Gateway image (default to latest version)
@@ -318,16 +332,4 @@ networks:
     name: temporal-network
 
 # Entrypoint for Stripe Webhook
-# stripe-cli:
-#   image: stripe/stripe-cli:latest
-#   container_name: stripe-cli
-#   command: >
-#     listen
-#     --api-key ${STRIPE_SECRET_KEY}
-#     --forward-to http://payment-service:8080/api/payments/webhook
-#   env_file:
-#     - ./payment-service/.env
-#   depends_on:
-#     - payment-service
-#   networks:
-#     - default
+
