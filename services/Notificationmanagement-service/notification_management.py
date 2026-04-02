@@ -20,7 +20,7 @@ app = FastAPI()
 
 ## this thing does a push to the DB
 
-load_dotenv()
+load_dotenv("../.env")
 
 # Authentication for lambda.
 def lambdaAuthenticate():
