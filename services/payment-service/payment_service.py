@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 import stripe
+import time
 from pydantic import BaseModel, field_validator
 import os
 from sqlalchemy.orm import Session
@@ -53,9 +54,11 @@ async def startup_event():
 
 @router.post("/process-payment")
 async def process_payment(checkout_request: CheckoutRequest):
+    expiry_time = int(time.time()) + (30 * 60)
     try:
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=["card"],
+            expires_at=expiry_time,
             line_items=[{
                 "price_data": {
                     "currency": "sgd",

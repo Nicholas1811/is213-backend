@@ -1,6 +1,7 @@
 from email.feedparser import NeedMoreData
 
 from temporalio import workflow
+from temporalio.exceptions import ApplicationError
 from datetime import timedelta
 from temporalio.common import RetryPolicy
 import uuid
@@ -188,16 +189,12 @@ class PurchaseWorkflow:
                 #pause logic here
                 self._checkout_url = payment_id['checkout_url'] 
 
-                #Pause the workflow and wait for Webhook signal
-                try:
-                    await workflow.wait_condition(
-                        lambda: self._payment_confirmed,
-                        timeout=timedelta(minutes=30)
-                    )
-                except asyncio.TimeoutError:
-                    raise Exception("Payment timeout: User abandoned checkout")
+                #Pause the workflow and wait for Webhook signal and also the timeout if user take too long to reply
+                await workflow.wait_condition(
+                    lambda: self._payment_confirmed,
+                    timeout=timedelta(minutes=31)
+                )
 
-                
                 await workflow.execute_activity(
                     update_order_status,
                     {"order_id": order_id},
@@ -248,4 +245,7 @@ class PurchaseWorkflow:
                 except Exception as comp_err:
                     workflow.logger.error(f"Compensation failed for {action}: {comp_err}")
 
-            raise
+            # raise ApplicationError(
+            #     f"Workflow failed: Rollback of everything {str(e)}", 
+            #     non_retryable=True
+            # )
