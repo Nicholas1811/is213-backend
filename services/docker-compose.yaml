@@ -121,8 +121,8 @@ services:
       - RABBITMQ_HOST=rabbitmq
     command: python worker.py
     restart: always
-    # env_file:
-    #   - ./points-service/.env
+    env_file:
+      - ./.env
     depends_on:
       rabbitmq:
         condition: service_healthy
