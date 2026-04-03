@@ -3,6 +3,46 @@ const S3_FOLDER = "listings";
 const S3_SUBFOLDER = "images";
 const S3_API_KEY = import.meta.env.VITE_S3_API_KEY as string;
 
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function decodeUrlSafely(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function extractEmbeddedUrl(value: string): string | null {
+  const directCandidate = value.trim();
+  if (isHttpUrl(directCandidate)) {
+    return directCandidate;
+  }
+
+  const decodedCandidate = decodeUrlSafely(directCandidate);
+  if (isHttpUrl(decodedCandidate)) {
+    return decodedCandidate;
+  }
+
+  const lastHttpsIndex = decodedCandidate.lastIndexOf("https://");
+  const lastHttpIndex = decodedCandidate.lastIndexOf("http://");
+  const startIndex = Math.max(lastHttpsIndex, lastHttpIndex);
+
+  if (startIndex === -1) {
+    return null;
+  }
+
+  const embeddedCandidate = decodeUrlSafely(decodedCandidate.slice(startIndex));
+  return isHttpUrl(embeddedCandidate) ? embeddedCandidate : null;
+}
+
 function toBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -38,6 +78,11 @@ export async function uploadImageToS3(file: File): Promise<string> {
 }
 
 export async function fetchImageUrl(key: string): Promise<string> {
+  const embeddedUrl = extractEmbeddedUrl(key);
+  if (embeddedUrl) {
+    return embeddedUrl;
+  }
+
   const res = await fetch(`${S3_API_BASE}/FetchFileUrl`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Contacts-Key": S3_API_KEY },
