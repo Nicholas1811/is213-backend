@@ -362,7 +362,6 @@ export default function MyListings() {
   const [deleteListing, setDeleteListing] = useState<ApiListing | null>(null);
 
   useEffect(() => {
-    setIsLoading(true);
     fetchListings(statusFilter)
       .then((data) => {
         setListings(data);
@@ -370,6 +369,11 @@ export default function MyListings() {
       .catch((err) => console.error("Failed to load listings", err))
       .finally(() => setIsLoading(false));
   }, [statusFilter]);
+
+  function handleStatusFilterChange(value: string) {
+    setIsLoading(true);
+    setStatusFilter(value);
+  }
 
   const filteredListings = listings.filter((l) =>
     (l.name ?? "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -412,7 +416,7 @@ export default function MyListings() {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
           <SelectTrigger className="w-[160px]">
             <SelectValue />
           </SelectTrigger>
