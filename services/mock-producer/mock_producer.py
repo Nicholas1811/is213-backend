@@ -20,7 +20,7 @@ def publish_event():
     channel = connection.channel()
 
     channel.exchange_declare(
-        exchange="notification-exchange",
+        exchange="notification.events",
         exchange_type='topic',
         durable=True
     )
@@ -34,7 +34,7 @@ def publish_event():
     }
 ## Sample routing key, change according to your needs.
     channel.basic_publish(
-        exchange="notification-exchange",
+        exchange="notification.events",
         routing_key="order.created", #Here
         body=json.dumps(event),
         properties=pika.BasicProperties(delivery_mode=2)

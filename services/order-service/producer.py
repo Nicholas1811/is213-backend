@@ -25,7 +25,7 @@ def publish_to_refund(order_id, listing_id, user_id, points_amount, point_refere
     )
 
     channel.exchange_declare(
-        exchange='notification-exchange',
+        exchange='notification.events',
         exchange_type='topic',
         durable=True
     )
@@ -50,7 +50,7 @@ def publish_to_refund(order_id, listing_id, user_id, points_amount, point_refere
     )
 
     channel.basic_publish(
-        exchange="notification-exchange",
+        exchange="notification.events",
         routing_key=CANCEL_TASK_ROUTING_KEY,
         body=json.dumps(payload),
         properties=pika.BasicProperties(delivery_mode=2)

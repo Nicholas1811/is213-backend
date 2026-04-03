@@ -40,7 +40,7 @@ def publish_notification(user_id,trans_id,status):
     channel = connection.channel()
 
     channel.exchange_declare(
-        exchange="notification-exchange",
+        exchange="notification.events",
         exchange_type='topic',
         durable=True
     )
@@ -57,7 +57,7 @@ def publish_notification(user_id,trans_id,status):
     }
 
     channel.basic_publish(
-        exchange="notification-exchange",
+        exchange="notification.events",
         routing_key=key,
         body=json.dumps(event),
         properties=pika.BasicProperties(delivery_mode=2)

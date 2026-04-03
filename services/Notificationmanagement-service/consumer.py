@@ -18,7 +18,7 @@ channel = connection.channel()
 
 #Declare exchange
 channel.exchange_declare(
-    exchange="notification-exchange",
+    exchange="notification.events",
     exchange_type='topic',
     durable=True
 )
@@ -32,37 +32,37 @@ channel.queue_declare(
     queue="notification.queue",
     durable=True,
     arguments={
-        "x-dead-letter-exchange": "notification-exchange",
+        "x-dead-letter-exchange": "notification.events",
         "x-dead-letter-routing-key": "deadletter"
     }
 )
 
 channel.queue_bind(
-    exchange="notification-exchange",
+    exchange="notification.events",
     queue="notification.queue",
     routing_key="#.failure"
 )
 
 channel.queue_bind(
-    exchange="notification-exchange",
+    exchange="notification.events",
     queue="notification.queue",
     routing_key="#.created"
 )
 
 channel.queue_bind(
-    exchange="notification-exchange",
+    exchange="notification.events",
     queue="notification.queue",
     routing_key="#.success"
 )
 
 channel.queue_bind(
-    exchange="notification-exchange",
+    exchange="notification.events",
     queue="notification.queue",
     routing_key="#.cancelled"
 )
 
 channel.queue_bind(
-    exchange="notification-exchange",
+    exchange="notification.events",
     queue="notification.dlq",
     routing_key="deadletter"
 )
