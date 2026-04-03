@@ -118,12 +118,17 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         if workflow_id:
             try:
                 print(f"--- ATTEMPTING SIGNAL TO: {workflow_id} ---")
-                if temporal_client:
-                    handle = temporal_client.get_workflow_handle(workflow_id)
-                    await handle.signal("confirm_payment")
-                    print("--- SIGNAL SENT SUCCESSFULLY ---")
-                else:
-                    print("--- ERROR: Temporal client not initialized ---")
+
+                global temporal_client
+                if not temporal_client:
+                    print("--- LAZY CONNECT TO TEMPORAL ---")
+                    temporal_client = await Client.connect("temporal:7233")
+
+                handle = temporal_client.get_workflow_handle(workflow_id)
+                await handle.signal("confirm_payment")
+
+                print("--- SIGNAL SENT SUCCESSFULLY ---")
+
             except Exception as e:
                 print(f"Failed to signal Temporal: {e}")
 
