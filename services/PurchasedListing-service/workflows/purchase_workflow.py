@@ -238,8 +238,6 @@ class PurchaseWorkflow:
 
                 return {"status": "Order created, Paid fully using points!"}
 
-
-
         except Exception as e:
             workflow.logger.error("Workflow failed, running compensations")
             for action, payload in reversed(compensations):

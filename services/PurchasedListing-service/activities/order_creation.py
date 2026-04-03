@@ -21,7 +21,7 @@ async def create_order(data):
         }
     )
     print("Order data is: ",  r.json(), flush=True)
-    if r.status_code >= 400 or r.status_code >= 500 or r.status_code >=200:
+    if r.status_code >= 400 or r.status_code >= 500:
         raise Exception(f"Order service failed: {r.status_code} {r.text}")
     return r.json()
 
