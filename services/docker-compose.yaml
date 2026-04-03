@@ -143,6 +143,10 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+    environment:
+      - SCREEN_REPLAY_MODEL_ENABLED=true
+      - SCREEN_REPLAY_MODEL_PATH=/app/models/screen_replay_model.joblib
+      - SCREEN_REPLAY_MODEL_REJECT_THRESHOLD=0.5
     expose:
       - "8080"
     depends_on:
@@ -343,4 +347,3 @@ networks:
     name: temporal-network
 
 # Entrypoint for Stripe Webhook
-
