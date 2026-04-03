@@ -10,6 +10,7 @@ from app.vision.models import ScreenReplayDetectionResult, ScreenReplayFeatures
 UInt8Image = NDArray[np.uint8]
 Float32Image = NDArray[np.float32]
 Int32Lines = NDArray[np.int32]
+Int32Contour = NDArray[np.int32]
 
 
 class ScreenReplayDetector:
@@ -31,12 +32,14 @@ class ScreenReplayDetector:
             self._fft_metrics(gray)
         )
         border_line_density = self._border_line_density(gray)
+        internal_display_region_score = self._internal_display_region_score(gray)
         ratio_gradient_shape_ratio = self._ratio_gradient_shape_ratio(gray)
 
         features = ScreenReplayFeatures(
             fft_periodicity_ratio=fft_periodicity_ratio,
             fft_axis_energy_ratio=fft_axis_energy_ratio,
             border_line_density=border_line_density,
+            internal_display_region_score=internal_display_region_score,
             high_frequency_energy_ratio=high_frequency_energy_ratio,
             ratio_gradient_shape_ratio=ratio_gradient_shape_ratio,
         )
@@ -47,6 +50,9 @@ class ScreenReplayDetector:
                 fft_axis_energy_ratio, 1.08, 1.65
             ),
             "screen_border_lines": self._scale(border_line_density, 0.08, 0.4),
+            "internal_display_region": self._scale(
+                internal_display_region_score, 0.18, 0.55
+            ),
             "microtexture_energy": self._scale(
                 high_frequency_energy_ratio, 0.18, 0.34
             ),
@@ -56,9 +62,10 @@ class ScreenReplayDetector:
         }
 
         score = (
-            0.46 * signal_scores["screen_border_lines"]
-            + 0.28 * signal_scores["microtexture_energy"]
-            + 0.26 * signal_scores["ratio_gradient_shape"]
+            0.28 * signal_scores["screen_border_lines"]
+            + 0.28 * signal_scores["internal_display_region"]
+            + 0.24 * signal_scores["microtexture_energy"]
+            + 0.2 * signal_scores["ratio_gradient_shape"]
         )
 
         if (
@@ -74,6 +81,12 @@ class ScreenReplayDetector:
             score += 0.06
 
         if (
+            signal_scores["internal_display_region"] > 0.55
+            and signal_scores["microtexture_energy"] > 0.45
+        ):
+            score += 0.1
+
+        if (
             signal_scores["periodic_frequency_pattern"] > 0.55
             and signal_scores["ratio_gradient_shape"] > 0.55
         ):
@@ -86,6 +99,9 @@ class ScreenReplayDetector:
         ) or (
             signal_scores["screen_border_lines"] > 0.82
             and signal_scores["microtexture_energy"] > 0.55
+        ) or (
+            signal_scores["internal_display_region"] > 0.8
+            and signal_scores["microtexture_energy"] > 0.42
         )
         confidence = score if is_screen_replay else 1.0 - score
 
@@ -190,6 +206,84 @@ class ScreenReplayDetector:
         perimeter = (2 * width) + (2 * height) + 1e-6
         return total_length / perimeter
 
+    def _internal_display_region_score(self, gray: Float32Image) -> float:
+        height, width = gray.shape
+        image_area = float(height * width)
+        min_dimension = min(height, width)
+
+        blurred = self._as_uint8_image(
+            cv2.GaussianBlur(
+                self._as_uint8_image(np.clip(gray * 255.0, 0, 255).astype(np.uint8)),
+                (5, 5),
+                0,
+            )
+        )
+        edges = self._as_uint8_image(cv2.Canny(blurred, 70, 140, L2gradient=True))
+        contours_info = cv2.findContours(
+            edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+        )
+        contours = cast(tuple[list[Int32Contour], object], contours_info)[0]
+
+        best_score = 0.0
+        for contour in contours:
+            perimeter = float(cv2.arcLength(contour, True))
+            if perimeter < min_dimension * 0.45:
+                continue
+
+            contour_area = abs(float(cv2.contourArea(contour)))
+            area_ratio = contour_area / image_area
+            if area_ratio < 0.035 or area_ratio > 0.82:
+                continue
+
+            rect = cv2.minAreaRect(contour.astype(np.float32))
+            (_, _), (rect_w, rect_h), _ = rect
+            rect_area = float(rect_w * rect_h)
+            if rect_area <= 1.0:
+                continue
+
+            rectangularity = contour_area / rect_area
+            if rectangularity < 0.72:
+                continue
+
+            shorter_side = max(min(rect_w, rect_h), 1.0)
+            longer_side = max(rect_w, rect_h)
+            aspect_ratio = float(longer_side / shorter_side)
+            if aspect_ratio < 1.15 or aspect_ratio > 2.7:
+                continue
+
+            box = cast(Int32Contour, cv2.boxPoints(rect).astype(np.int32))
+            x, y, w, h = cv2.boundingRect(box)
+            clearance = min(x, y, width - (x + w), height - (y + h)) / float(
+                min_dimension
+            )
+            internality_score = self._scale(clearance, 0.015, 0.16)
+            if internality_score <= 0.0:
+                continue
+
+            approx = cast(
+                Int32Contour,
+                cv2.approxPolyDP(contour, 0.03 * perimeter, True),
+            )
+            right_angle_score = (
+                self._right_angle_score(approx)
+                if len(approx) == 4 and cv2.isContourConvex(approx)
+                else 0.65
+            )
+            area_score = self._scale(area_ratio, 0.04, 0.28)
+            rectangularity_score = self._scale(rectangularity, 0.78, 0.96)
+            aspect_score = 1.0 - min(abs(aspect_ratio - 1.85) / 0.95, 1.0)
+
+            candidate_score = (
+                0.28 * internality_score
+                + 0.24 * area_score
+                + 0.2 * rectangularity_score
+                + 0.16 * aspect_score
+                + 0.12 * right_angle_score
+            )
+            best_score = max(best_score, candidate_score)
+
+        return best_score
+
     def _ratio_gradient_shape_ratio(self, gray: Float32Image) -> float:
         base = self._as_float32_image(cv2.GaussianBlur(gray, (0, 0), sigmaX=5.0))
         ratio = gray / (base + 1e-4)
@@ -218,6 +312,27 @@ class ScreenReplayDetector:
         if high <= low:
             return 0.0
         return float(np.clip((value - low) / (high - low), 0.0, 1.0))
+
+    def _right_angle_score(self, quad: Int32Contour) -> float:
+        points = quad.reshape(-1, 2).astype(np.float32)
+        center = points.mean(axis=0)
+        angles = np.arctan2(points[:, 1] - center[1], points[:, 0] - center[0])
+        ordered = points[np.argsort(angles)]
+
+        scores: list[float] = []
+        for index in range(4):
+            prev_point = ordered[index - 1]
+            point = ordered[index]
+            next_point = ordered[(index + 1) % 4]
+
+            v1 = prev_point - point
+            v2 = next_point - point
+            denom = (np.linalg.norm(v1) * np.linalg.norm(v2)) + 1e-6
+            cosine = float(np.clip(np.dot(v1, v2) / denom, -1.0, 1.0))
+            angle = float(np.degrees(np.arccos(cosine)))
+            scores.append(max(0.0, 1.0 - (abs(angle - 90.0) / 28.0)))
+
+        return float(sum(scores) / len(scores))
 
     def _as_uint8_image(self, value: object) -> UInt8Image:
         return cast(UInt8Image, value)

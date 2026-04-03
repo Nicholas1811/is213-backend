@@ -8,7 +8,7 @@ from app.services.listing_process_service import ListingProcessService
 from app.services.points_verification_service import PointsVerificationService
 from app.clients.openai_client import OpenAIClient
 from app.clients.rabbitmq_client import RabbitMQClient
-from app.vision import ImageLoader, ScreenReplayDetector
+from app.vision import ImageLoader, ScreenReplayDetector, ScreenReplayModel
 
 from app.config import (
     AI_CONSUME_QUEUE,
@@ -22,6 +22,9 @@ from app.config import (
     RABBITMQ_EXCHANGE,
     SCREEN_REPLAY_DETECTOR_ENABLED,
     SCREEN_REPLAY_FETCH_TIMEOUT_SECONDS,
+    SCREEN_REPLAY_MODEL_ENABLED,
+    SCREEN_REPLAY_MODEL_PATH,
+    SCREEN_REPLAY_MODEL_REJECT_THRESHOLD,
     SCREEN_REPLAY_REJECT_THRESHOLD,
 )
 
@@ -49,10 +52,24 @@ async def main() -> None:
     screen_replay_detector = ScreenReplayDetector(
         reject_threshold=SCREEN_REPLAY_REJECT_THRESHOLD
     )
+    screen_replay_model = (
+        ScreenReplayModel.maybe_load(
+            SCREEN_REPLAY_MODEL_PATH,
+            reject_threshold=SCREEN_REPLAY_MODEL_REJECT_THRESHOLD,
+        )
+        if SCREEN_REPLAY_MODEL_ENABLED
+        else None
+    )
+    if SCREEN_REPLAY_MODEL_ENABLED and screen_replay_model is None:
+        logger.warning(
+            "Screen replay model was enabled but not found at path=%s",
+            SCREEN_REPLAY_MODEL_PATH,
+        )
     points_verification_service = PointsVerificationService(
         openai_client,
         image_loader=image_loader,
         screen_replay_detector=screen_replay_detector,
+        screen_replay_model=screen_replay_model,
         precheck_enabled=SCREEN_REPLAY_DETECTOR_ENABLED,
     )
 

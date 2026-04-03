@@ -6,8 +6,8 @@ from app.schemas.points_verification_processed import (
     PointsVerificationProcessedResponse,
 )
 from app.schemas.points_verification_upload import PointsVerificationUploadRequest
-from app.vision import ImageLoader, ScreenReplayDetector
-from app.vision.models import ScreenReplayDetectionResult
+from app.vision import ImageLoader, ScreenReplayDetector, ScreenReplayModel
+from app.vision.models import ScreenReplayDetectionResult, ScreenReplayModelResult
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +18,13 @@ class PointsVerificationService:
         openai_client: OpenAIClient,
         image_loader: ImageLoader | None = None,
         screen_replay_detector: ScreenReplayDetector | None = None,
+        screen_replay_model: ScreenReplayModel | None = None,
         precheck_enabled: bool = True,
     ) -> None:
         self.openai_client = openai_client
         self.image_loader = image_loader
         self.screen_replay_detector = screen_replay_detector
+        self.screen_replay_model = screen_replay_model
         self.precheck_enabled = precheck_enabled
 
     async def process(
@@ -117,22 +119,36 @@ class PointsVerificationService:
 
         before_result = self.screen_replay_detector.analyze(before_image)
         after_result = self.screen_replay_detector.analyze(after_image)
+        before_model_result = self._predict_with_local_model(before_result)
+        after_model_result = self._predict_with_local_model(after_result)
 
-        self._log_detection_result("before", request, before_result)
-        self._log_detection_result("after", request, after_result)
+        self._log_detection_result(
+            "before", request, before_result, before_model_result
+        )
+        self._log_detection_result("after", request, after_result, after_model_result)
 
-        for label, result in (
-            ("before", before_result),
-            ("after", after_result),
+        for label, result, model_result in (
+            ("before", before_result, before_model_result),
+            ("after", after_result, after_model_result),
         ):
-            if result.is_screen_replay:
+            should_reject = (
+                model_result.is_screen_replay
+                if model_result is not None
+                else result.is_screen_replay
+            )
+            if should_reject:
+                reason = (
+                    f"local model spoof_probability={model_result.probability}"
+                    if model_result is not None
+                    else result.reason
+                )
                 logger.info(
-                    "Rejected points verification from local screen replay detector trans_id=%s user_id=%s image=%s score=%s reason=%s",
+                    "Rejected points verification from local screen replay precheck trans_id=%s user_id=%s image=%s score=%s reason=%s",
                     request.trans_id,
                     request.user_id,
                     label,
                     result.score,
-                    result.reason,
+                    reason,
                 )
                 return PointsVerificationProcessedResponse(
                     trans_id=request.trans_id,
@@ -147,14 +163,39 @@ class PointsVerificationService:
         label: str,
         request: PointsVerificationUploadRequest,
         result: ScreenReplayDetectionResult,
+        model_result: ScreenReplayModelResult | None = None,
     ) -> None:
+        if model_result is None:
+            logger.info(
+                "Screen replay precheck trans_id=%s user_id=%s image=%s heuristic_detected=%s score=%s confidence=%s features=%s",
+                request.trans_id,
+                request.user_id,
+                label,
+                result.is_screen_replay,
+                result.score,
+                result.confidence,
+                result.features.as_dict(),
+            )
+            return
+
         logger.info(
-            "Screen replay precheck trans_id=%s user_id=%s image=%s detected=%s score=%s confidence=%s features=%s",
+            "Screen replay precheck trans_id=%s user_id=%s image=%s heuristic_detected=%s score=%s confidence=%s model_detected=%s model_probability=%s model_threshold=%s features=%s",
             request.trans_id,
             request.user_id,
             label,
             result.is_screen_replay,
             result.score,
             result.confidence,
+            model_result.is_screen_replay,
+            model_result.probability,
+            model_result.threshold,
             result.features.as_dict(),
         )
+
+    def _predict_with_local_model(
+        self,
+        result: ScreenReplayDetectionResult,
+    ) -> ScreenReplayModelResult | None:
+        if self.screen_replay_model is None:
+            return None
+        return self.screen_replay_model.predict(result)
