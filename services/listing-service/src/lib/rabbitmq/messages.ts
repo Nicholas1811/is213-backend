@@ -41,6 +41,20 @@ export const listingProcessedEventSchema = listingEventSchema.extend({
 
 export type ListingProcessedEvent = z.infer<typeof listingProcessedEventSchema>;
 
+export const cancelledOrderEventSchema = z.object({
+  event_id: z.uuid(),
+  key: z.string().min(1),
+  order_id: z.coerce.number().int().positive(),
+  listing_id: z.coerce.number().int().positive(),
+  user_id: z.string().min(1),
+  points_amount: z.union([z.string(), z.number()]),
+  point_reference_id: z.string(),
+  payment_id: z.string(),
+  qty: z.coerce.number().int().positive(),
+});
+
+export type CancelledOrderEvent = z.infer<typeof cancelledOrderEventSchema>;
+
 interface CreateListingEventInput {
   eventName: ListingEventName;
   data: z.infer<typeof listingSnapshotSchema>;

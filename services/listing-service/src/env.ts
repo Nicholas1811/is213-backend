@@ -12,6 +12,8 @@ const EnvSchema = z.object({
   RABBITMQ_URL: z.string().default("amqp://localhost:5672"),
   RABBITMQ_EXCHANGE: z.string().default("listing.events"),
   RABBITMQ_QUEUE: z.string().default("listing.sync.q"),
+  RABBITMQ_CANCEL_ORDER_EXCHANGE: z.string().default("cancel.order.fanout.events"),
+  RABBITMQ_CANCEL_ORDER_QUEUE: z.string().default("listing.cancel.order.q"),
   RABBITMQ_PREFETCH: z.coerce.number().int().positive().default(20),
 });
 
