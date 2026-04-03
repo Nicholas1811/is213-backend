@@ -140,6 +140,12 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+    environment:
+      - SCREEN_REPLAY_MODEL_ENABLED=true
+      - SCREEN_REPLAY_MODEL_PATH=/app/training/artifacts/model.joblib
+      - SCREEN_REPLAY_MODEL_REJECT_THRESHOLD=0.5
+    volumes:
+      - ./ai-service/training/artifacts:/app/training/artifacts:ro
     expose:
       - "8080"
     depends_on:
@@ -336,4 +342,3 @@ networks:
     name: temporal-network
 
 # Entrypoint for Stripe Webhook
-
