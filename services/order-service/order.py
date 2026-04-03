@@ -208,7 +208,7 @@ def update_order_status(order_id: int) -> tuple[dict[str, str], int]:
 
 			# Step 2: Publish to refund service first
 			from producer import publish_to_refund
-			publish_to_refund(order_id, row.listing_id, row.user_id, row.total_paid, row.point_id, row.payment_id)
+			publish_to_refund(order_id, row.listing_id, row.user_id, row.total_paid, row.point_id, row.payment_id, row.qty)
 
 
 			# Step 3: Perform the update
