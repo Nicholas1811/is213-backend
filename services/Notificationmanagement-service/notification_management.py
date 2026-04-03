@@ -192,6 +192,10 @@ def event_dictionary(event):
             "title" : "Order cancelled",
             "body" : f"Your order is cancelled. The order id is {event['event_original_id']}."
         },
+        'listing.cancelled':{
+            "title" : "Listing cancelled",
+            "body" : f"Your listing is cancelled. The order id is {event['event_original_id']}."
+        }
 
     }
     return sample_dict.get(eventKey, {

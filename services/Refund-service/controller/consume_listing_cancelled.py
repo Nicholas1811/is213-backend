@@ -5,7 +5,7 @@ import time
 
 from controller.constants import REFUND_TASK_QUEUE
 from controller.refund_controller import process_refund
-
+from controller.notification_publisher import publish_event
 
 EXCHANGE_NAME = "refund.events"
 ROUTING_KEY = "refund.batch.requested"
@@ -73,6 +73,7 @@ def on_refund_batch(ch, method, properties, body):
 
                 print(f"[Refund] Processing order {order_id}")
                 process_refund(order)
+                publish_event(order_id, order.get("user_id"))
 
                 print(f"[Refund] Success for order {order_id}")
 
