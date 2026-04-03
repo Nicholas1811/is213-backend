@@ -51,6 +51,7 @@ export default function Marketplace() {
             .map(async (l) => {
               try {
                 urlMap[l.id] = await fetchImageUrl(l.imageUrl!);
+                console.log(urlMap[l.id])
               } catch {
                 // ignore failed image fetches
               }

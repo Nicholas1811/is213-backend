@@ -13,16 +13,19 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    networks:
+      - temporal-network
+      - default
 
-  mock_producer:
-    build: ./mock-producer
-    #    expose:
-    #      - "8080"
-    ports:
-      - "9000:8080"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
+#  mock_producer:
+#    build: ./mock-producer
+#    #    expose:
+#    #      - "8080"
+#    ports:
+#      - "9000:8080"
+#    depends_on:
+#      rabbitmq:
+#        condition: service_healthy
 
   keycloak-esd:
     build:
@@ -218,8 +221,12 @@ services:
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 50
+      start_period: 90s
+    networks:
+      - default
+      - temporal-network
 
   ## == TEMPORAL CONTAINERS ==
   postgresql:

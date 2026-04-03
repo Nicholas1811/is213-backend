@@ -93,8 +93,6 @@ export default function ListingDetail() {
         });
         return;
       }
-
-      toast.error("Unexpected purchase response from server.");
     } catch (error) {
       console.error("Failed to purchase listing", error);
       toast.error("Purchase failed. Please try again.");

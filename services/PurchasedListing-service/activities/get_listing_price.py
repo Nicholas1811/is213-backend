@@ -31,6 +31,7 @@ async def reset_listing(data):
             "qty" : data['qty']
         }
     )
+    print("Compensation: Restock listing with id", listing_id)
     if(r.status_code >= 400 or r.status_code >= 500):
         raise Exception("Failed to reserve listing")
     return r.json()

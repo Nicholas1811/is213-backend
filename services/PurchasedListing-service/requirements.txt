@@ -6,3 +6,4 @@ typing_extensions==4.15.0
 uvicorn
 flask
 stripe
+pika

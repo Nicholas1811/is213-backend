@@ -12,6 +12,7 @@ with workflow.unsafe.imports_passed_through():
     from activities.point_activity import use_points, refund_points, updatePointWithOrderId
     from activities.payment_activity import charge_payment
     from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId, update_order_pointId
+    from activities.publish_purchased_event import publish_event
 
 retry_policy = RetryPolicy(
     initial_interval=timedelta(seconds=2),
@@ -201,6 +202,17 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
+
+                await workflow.execute_activity(
+                    publish_event,
+                    {
+                        "event_key" : "purchase.success",
+                        "userId" : data['user_id'],
+                        "original_id" : order_id
+                    },
+                    start_to_close_timeout= timedelta(seconds=15),
+                    retry_policy=retry_policy
+                )
                 
                 return {"status": "Order fully paid and finalized!", "payment_id": payment_id['checkout_id']}
                 
@@ -213,11 +225,23 @@ class PurchaseWorkflow:
                     start_to_close_timeout=timedelta(seconds=10),
                     retry_policy=retry_policy
                 )
+                await workflow.execute_activity(
+                    publish_event,
+                    {
+                        "event_key" : "purchase.success",
+                        "userId" : data['user_id'],
+                        "original_id" : order_id
+                    },
+                    start_to_close_timeout= timedelta(seconds=15),
+                    retry_policy=retry_policy
+                )
+
                 return {"status": "Order created, Paid fully using points!"}
+
+
 
         except Exception as e:
             workflow.logger.error("Workflow failed, running compensations")
-
             for action, payload in reversed(compensations):
                 ## Must check over here.
                 try:
@@ -244,8 +268,13 @@ class PurchaseWorkflow:
 
                 except Exception as comp_err:
                     workflow.logger.error(f"Compensation failed for {action}: {comp_err}")
-
-            # raise ApplicationError(
-            #     f"Workflow failed: Rollback of everything {str(e)}", 
-            #     non_retryable=True
-            # )
+            await workflow.execute_activity(
+                publish_event,
+                {
+                    "event_key" : "purchase.failure",
+                    "userId" : data['user_id'],
+                    "original_id" : order_id
+                },
+                start_to_close_timeout= timedelta(seconds=15),
+                retry_policy=retry_policy
+            )

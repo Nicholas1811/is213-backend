@@ -195,6 +195,10 @@ def event_dictionary(event):
         'listing.cancelled':{
             "title" : "Listing cancelled",
             "body" : f"Your listing is cancelled. The order id is {event['event_original_id']}."
+        },
+        'purchase.failure':{
+            "title" : "Purchase failed",
+            "body" : f"Your listing purchased failed. The order id is {event['event_original_id']}."
         }
 
     }

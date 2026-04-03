@@ -6,22 +6,19 @@ from activities.get_listing_price import purchase_listing, reset_listing
 from activities.point_activity import use_points, refund_points, updatePointWithOrderId
 from activities.payment_activity import charge_payment
 from activities.order_creation import create_order, cancel_order, update_order_status, update_order_paymentId, update_order_pointId
-
+from activities.publish_purchased_event import publish_event
 
 temporal_client = None
 
 #In this method, we define a worker, in which it needs a workflow and the acitvities to pump the activities into the workflow.
 async def connect_temporal():
-    global temporal_client
     while True:
         try:
             client = await Client.connect("temporal:7233")
-            temporal_client = client
-            print("Connected to Temporal & ready")
-            return temporal_client
-
-        except Exception as e:
-            print("Waiting for Temporal...", e)
+            print("Connected to Temporal")
+            return client
+        except Exception:
+            print("Waiting for Temporal...")
             await asyncio.sleep(3)
 
 
@@ -42,7 +39,8 @@ async def main():
             charge_payment,
             create_order,
             updatePointWithOrderId,
-            update_order_pointId
+            update_order_pointId,
+            publish_event
         ],
     )
 

@@ -42,7 +42,14 @@ def publish_to_refund(order_id, listing_id, user_id, points_amount, point_refere
         "payment_id": str(payment_id),
         "qty" : qty
     }
-    
+
+    notif_payload = {
+        "event_id": str(uuid.uuid4()),
+        "key": CANCEL_TASK_ROUTING_KEY,
+        "userId": str(user_id),
+        "event_original_id" : f"{str(order_id)}"
+    }
+
     channel.basic_publish(
         exchange='cancel.order.fanout.events',
         routing_key=CANCEL_TASK_ROUTING_KEY,
@@ -53,7 +60,7 @@ def publish_to_refund(order_id, listing_id, user_id, points_amount, point_refere
     channel.basic_publish(
         exchange="notification.events",
         routing_key=CANCEL_TASK_ROUTING_KEY,
-        body=json.dumps(payload),
+        body=json.dumps(notif_payload),
         properties=pika.BasicProperties(delivery_mode=2)
     )
     connection.close()
