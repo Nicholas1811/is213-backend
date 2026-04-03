@@ -177,17 +177,47 @@ function EditModal({
   async function handleSave() {
     setIsSaving(true);
     try {
-      const res = await apiClient.patch<ApiListing>(
-        `${ENDPOINTS.LISTINGS}/${listing.id}`,
-        {
-          name: name || undefined,
-          description: description || undefined,
-          qty: qty ? parseInt(qty, 10) : undefined,
-          unitPriceCents: priceDollars ? Math.round(parseFloat(priceDollars) * 100) : undefined,
-          bestBefore: bestBefore ? new Date(bestBefore).toISOString() : undefined,
-          status,
+      const parsedQty = qty ? parseInt(qty, 10) : undefined;
+      const unitPriceCents = priceDollars ? Math.round(parseFloat(priceDollars) * 100) : undefined;
+      const bestBeforeIso = bestBefore ? new Date(bestBefore).toISOString() : undefined;
+      const isCancelling = listing.status !== "cancelled" && status === "cancelled";
+      const hasNonStatusChanges =
+        name !== (listing.name ?? "") ||
+        description !== (listing.description ?? "") ||
+        qty !== String(listing.qty) ||
+        priceDollars !==
+          (listing.unitPriceCents != null ? (listing.unitPriceCents / 100).toFixed(2) : "") ||
+        bestBefore !== (listing.bestBefore ? listing.bestBefore.slice(0, 16) : "");
+
+      if (isCancelling) {
+        if (hasNonStatusChanges) {
+          await apiClient.patch<ApiListing>(
+            `${ENDPOINTS.LISTINGS}/${listing.id}`,
+            {
+              name: name || undefined,
+              description: description || undefined,
+              qty: parsedQty,
+              unitPriceCents,
+              bestBefore: bestBeforeIso,
+            }
+          );
         }
-      );
+
+        const cancelRes = await apiClient.post<ApiListing>(
+          ENDPOINTS.CANCEL_LISTING(String(listing.id))
+        );
+        onSaved(cancelRes.data);
+        return;
+      }
+
+      const res = await apiClient.patch<ApiListing>(`${ENDPOINTS.LISTINGS}/${listing.id}`, {
+        name: name || undefined,
+        description: description || undefined,
+        qty: parsedQty,
+        unitPriceCents,
+        bestBefore: bestBeforeIso,
+        status,
+      });
       onSaved(res.data);
     } catch (err) {
       console.error("Failed to update listing", err);

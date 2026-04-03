@@ -11,6 +11,7 @@ export const ENDPOINTS = {
   CREATE_LISTING: `${API_GATEWAY_BASE}/listings`,
   UPDATE_LISTING: (id: string) => `${API_GATEWAY_BASE}/listings/${id}`,
   DELETE_LISTING: (id: string) => `${API_GATEWAY_BASE}/listings/${id}`,
+  CANCEL_LISTING: (id: string) => `${API_GATEWAY_BASE}/listings/${id}/cancel`,
 
   // AI-Assisted Listing (CreateListing-service)
   AI_CREATE_LISTINGS: `${API_GATEWAY_BASE}/listings/ai-create`,
