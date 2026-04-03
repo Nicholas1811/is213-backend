@@ -1,24 +1,39 @@
 import logging
+from asyncio import gather
 
 from app.clients.openai_client import OpenAIClient
-
 from app.schemas.points_verification_processed import (
     PointsVerificationProcessedResponse,
 )
 from app.schemas.points_verification_upload import PointsVerificationUploadRequest
+from app.vision import ImageLoader, ScreenReplayDetector
+from app.vision.models import ScreenReplayDetectionResult
 
 logger = logging.getLogger(__name__)
 
 
 class PointsVerificationService:
-    def __init__(self, openai_client: OpenAIClient) -> None:
+    def __init__(
+        self,
+        openai_client: OpenAIClient,
+        image_loader: ImageLoader | None = None,
+        screen_replay_detector: ScreenReplayDetector | None = None,
+        precheck_enabled: bool = True,
+    ) -> None:
         self.openai_client = openai_client
+        self.image_loader = image_loader
+        self.screen_replay_detector = screen_replay_detector
+        self.precheck_enabled = precheck_enabled
 
     async def process(
         self, request: PointsVerificationUploadRequest
     ) -> PointsVerificationProcessedResponse:
         before_image_url = request.before_url
         after_image_url = request.after_url
+
+        precheck_result = await self._run_screen_replay_precheck(request)
+        if precheck_result is not None:
+            return precheck_result
 
         system_prompt = """
              You are verifying whether a user truly finished a real meal for a rewards system.
@@ -70,9 +85,76 @@ class PointsVerificationService:
             ai_result.get("reason"),
         )
 
-        response = PointsVerificationProcessedResponse(
+        return PointsVerificationProcessedResponse(
             trans_id=request.trans_id,
             user_id=request.user_id,
             status=ai_result["status"],
         )
-        return response
+
+    async def _run_screen_replay_precheck(
+        self,
+        request: PointsVerificationUploadRequest,
+    ) -> PointsVerificationProcessedResponse | None:
+        if (
+            not self.precheck_enabled
+            or self.image_loader is None
+            or self.screen_replay_detector is None
+        ):
+            return None
+
+        try:
+            before_image, after_image = await gather(
+                self.image_loader.load(request.before_url),
+                self.image_loader.load(request.after_url),
+            )
+        except Exception:
+            logger.exception(
+                "Screen replay precheck skipped because image loading failed trans_id=%s user_id=%s",
+                request.trans_id,
+                request.user_id,
+            )
+            return None
+
+        before_result = self.screen_replay_detector.analyze(before_image)
+        after_result = self.screen_replay_detector.analyze(after_image)
+
+        self._log_detection_result("before", request, before_result)
+        self._log_detection_result("after", request, after_result)
+
+        for label, result in (
+            ("before", before_result),
+            ("after", after_result),
+        ):
+            if result.is_screen_replay:
+                logger.info(
+                    "Rejected points verification from local screen replay detector trans_id=%s user_id=%s image=%s score=%s reason=%s",
+                    request.trans_id,
+                    request.user_id,
+                    label,
+                    result.score,
+                    result.reason,
+                )
+                return PointsVerificationProcessedResponse(
+                    trans_id=request.trans_id,
+                    user_id=request.user_id,
+                    status="rejected",
+                )
+
+        return None
+
+    def _log_detection_result(
+        self,
+        label: str,
+        request: PointsVerificationUploadRequest,
+        result: ScreenReplayDetectionResult,
+    ) -> None:
+        logger.info(
+            "Screen replay precheck trans_id=%s user_id=%s image=%s detected=%s score=%s confidence=%s features=%s",
+            request.trans_id,
+            request.user_id,
+            label,
+            result.is_screen_replay,
+            result.score,
+            result.confidence,
+            result.features.as_dict(),
+        )

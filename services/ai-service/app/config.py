@@ -17,3 +17,14 @@ AI_TASK_ROUTING_KEY = "ai_processing_queue"
 
 AI_RESULT_QUEUE = "ai_result_queue"
 AI_RESULT_ROUTING_KEY = "ai_result_queue"
+
+SCREEN_REPLAY_DETECTOR_ENABLED = (
+    environ.get("SCREEN_REPLAY_DETECTOR_ENABLED", "true").lower() == "true"
+)
+SCREEN_REPLAY_REJECT_THRESHOLD = float(
+    environ.get("SCREEN_REPLAY_REJECT_THRESHOLD", "0.72")
+)
+SCREEN_REPLAY_FETCH_TIMEOUT_SECONDS = float(
+    environ.get("SCREEN_REPLAY_FETCH_TIMEOUT_SECONDS", "10")
+)
+OPENAI_POINTS_IMAGE_DETAIL = environ.get("OPENAI_POINTS_IMAGE_DETAIL", "high")

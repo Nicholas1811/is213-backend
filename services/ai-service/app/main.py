@@ -8,6 +8,7 @@ from app.services.listing_process_service import ListingProcessService
 from app.services.points_verification_service import PointsVerificationService
 from app.clients.openai_client import OpenAIClient
 from app.clients.rabbitmq_client import RabbitMQClient
+from app.vision import ImageLoader, ScreenReplayDetector
 
 from app.config import (
     AI_CONSUME_QUEUE,
@@ -19,6 +20,9 @@ from app.config import (
     LISTING_UPLOADED_ROUTING_KEY,
     POINTS_VERIFICATION_EXCHANGE,
     RABBITMQ_EXCHANGE,
+    SCREEN_REPLAY_DETECTOR_ENABLED,
+    SCREEN_REPLAY_FETCH_TIMEOUT_SECONDS,
+    SCREEN_REPLAY_REJECT_THRESHOLD,
 )
 
 logging.basicConfig(
@@ -41,7 +45,16 @@ async def main() -> None:
     publisher = Publisher(rabbitmq_client)
 
     listing_process_service = ListingProcessService(openai_client)
-    points_verification_service = PointsVerificationService(openai_client)
+    image_loader = ImageLoader(timeout_seconds=SCREEN_REPLAY_FETCH_TIMEOUT_SECONDS)
+    screen_replay_detector = ScreenReplayDetector(
+        reject_threshold=SCREEN_REPLAY_REJECT_THRESHOLD
+    )
+    points_verification_service = PointsVerificationService(
+        openai_client,
+        image_loader=image_loader,
+        screen_replay_detector=screen_replay_detector,
+        precheck_enabled=SCREEN_REPLAY_DETECTOR_ENABLED,
+    )
 
     listing_handler = ListingUploadedHandlder(
         publisher=publisher, listing_process_service=listing_process_service

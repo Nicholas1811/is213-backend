@@ -5,14 +5,13 @@ services:
     container_name: notification-mgmt-service
     command: python consumer.py
     env_file:
-      - ./.env
+      - ./Notificationmanagement-service/.env
     environment:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
 
   mock_producer:
     build: ./mock-producer
@@ -21,15 +20,14 @@ services:
     ports:
       - "9000:8080"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
 
   keycloak-esd:
     build:
       context: .
       dockerfile: keycloak-user-sync-listener/Dockerfile
     env_file:
-      - ./.env
+      - ./user-service/.env
     command:
       - start-dev
       - --spi-events-listener-user-sync-listener-callback-url=http://user-service:8080/events/keycloak
@@ -53,7 +51,7 @@ services:
       dockerfile: Dockerfile
     container_name: user-service
     env_file:
-      - ./.env
+      - ./user-service/.env
     expose:
       - "8080"
 
@@ -63,7 +61,7 @@ services:
       dockerfile: Dockerfile
     container_name: payment-service
     env_file:
-      - ./.env
+      - ./payment-service/.env
     expose:
       - "8080"
     networks:
@@ -76,15 +74,14 @@ services:
       dockerfile: Dockerfile
     container_name: listing-service
     env_file:
-      - ./.env
+      - ./listing-service/.env
     expose:
       - "8080"
     networks:
       - temporal-network
       - default
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
 
   order-service:
     build:
@@ -92,7 +89,7 @@ services:
       dockerfile: Dockerfile
     container_name: order-service
     env_file:
-      - ./.env
+      - ./order-service/.env
     expose:
       - "8080"
     networks:
@@ -105,7 +102,7 @@ services:
       dockerfile: Dockerfile
     container_name: point-service
     env_file:
-      - ./.env
+      - ./points-service/.env
     expose:
       - "8080"
     networks:
@@ -121,13 +118,11 @@ services:
       - RABBITMQ_HOST=rabbitmq
     command: python worker.py
     restart: always
-    env_file:
-      - ./.env
+    # env_file:
+    #   - ./points-service/.env
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      point-service:
-        condition: service_started
+      - rabbitmq
+      - point-service
     networks:
       - temporal-network
       - default
@@ -137,14 +132,12 @@ services:
       context: ./ai-service
       dockerfile: Dockerfile
     container_name: ai-service
-    restart: unless-stopped
     env_file:
-      - ./.env
+      - ./ai-service/.env
     expose:
       - "8080"
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - rabbitmq
 
   purchase-product-service:
     build:
@@ -184,12 +177,8 @@ services:
       - "8080"
     networks:
       - temporal-network
-      - default
     depends_on:
       - temporal
-      - rabbitmq
-    environment:
-      - RABBITMQ_HOST=rabbitmq
 
   purchase-worker:
     build:
@@ -215,11 +204,6 @@ services:
       - "5672:5672"
       - "15672:15672"
     restart: always
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   ## == TEMPORAL CONTAINERS ==
   postgresql:
@@ -280,20 +264,6 @@ services:
     ports:
       - 8090:8080 # use 8090 to avoid conflict with other services
 
-  stripe-cli:
-    image: stripe/stripe-cli:latest
-    container_name: stripe-cli
-    command: >
-      listen
-      --api-key ${STRIPE_SECRET_KEY}
-      --forward-to http://payment-service:8080/webhook
-    env_file:
-      - ./.env
-    depends_on:
-      - payment-service
-    networks:
-      - default
-      - temporal-network
   ## == KONG API GATEWAY ==
   kong:
     image: kong:latest # Kong Gateway image (default to latest version)
@@ -334,6 +304,3 @@ networks:
   temporal-network:
     driver: bridge
     name: temporal-network
-
-# Entrypoint for Stripe Webhook
-
