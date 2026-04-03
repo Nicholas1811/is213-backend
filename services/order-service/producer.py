@@ -19,7 +19,7 @@ def publish_to_refund(order_id, listing_id, user_id, points_amount, point_refere
     channel = connection.channel()
     
     channel.exchange_declare(
-        exchange='cancel-order-fanout',
+        exchange='cancel.order.fanout.events',
         exchange_type='fanout',
         durable=True
     )
@@ -44,7 +44,7 @@ def publish_to_refund(order_id, listing_id, user_id, points_amount, point_refere
     }
     
     channel.basic_publish(
-        exchange='cancel-order-fanout',
+        exchange='cancel.order.fanout.events',
         routing_key=CANCEL_TASK_ROUTING_KEY,
         body=json.dumps(payload),
         properties=pika.BasicProperties(delivery_mode=2)

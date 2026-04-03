@@ -21,7 +21,7 @@ def start_order_result_consumer():
     channel = connection.channel()
     
     channel.exchange_declare(
-        exchange='cancel-order-fanout',
+        exchange='cancel.order.fanout.events',
         exchange_type='fanout',
         durable=True
     )
@@ -29,7 +29,7 @@ def start_order_result_consumer():
     channel.queue_declare(queue=REFUND_TASK_QUEUE, durable=True)
     
     channel.queue_bind(
-        exchange='cancel-order-fanout',
+        exchange='cancel.order.fanout.events',
         queue=REFUND_TASK_QUEUE,
         routing_key=''
     )
