@@ -97,6 +97,8 @@ def addToNotifications(notification):
         return False
 
 def pushNotificationWorkflow(event):
+    ## ==TODO DLQ SIMULATION==
+    #raise Exception()
     notif_content = event_dictionary(event)
     ## Each event should pass around the userId.
     notification = Notification(
@@ -132,6 +134,7 @@ def pushNotificationWorkflow(event):
                 data=json.dumps(information['payload'])
             )
             print(response.status_code, response.text, " response from FCM", flush=True)
+
 
 def event_dictionary(event):
     eventKey = event['key']
