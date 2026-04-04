@@ -6,7 +6,7 @@ export interface Order {
   pointsRedeemed: number;
   discount: number;
   total: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "cancelled" | "refund_pending" | "refunded";
   pointsEarned: number;
   createdAt: string;
   updatedAt: string;

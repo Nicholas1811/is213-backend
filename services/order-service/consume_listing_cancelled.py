@@ -5,7 +5,7 @@ from sqlalchemy import text
 from produce_listing_cancelled import publish_refund_batch
 
 # 🔥 import your DB engine + serializer
-from order import _db_engine, _serialize_row
+from order import _db_engine
 
 RABBITMQ_HOST = "rabbitmq"
 EXCHANGE_NAME = "listing.events"
@@ -37,17 +37,30 @@ def callback(ch, method, properties, body):
 
         with _db_engine().connect() as connection:
             rows = connection.execute(
-                text("SELECT * FROM orders WHERE listing_id = :listing_id"),
+                text("SELECT * FROM orders WHERE listing_id = :listing_id and status = 'PAID'"),
                 {"listing_id": listing_id},
             ).mappings().all()
 
-        orders = [_serialize_row(dict(row)) for row in rows]
+        orders = []
+        for row in rows:
+            order = dict(row)
+            orders.append({
+                "id": order.get("id"),
+                "listing_id": order.get("listing_id"),
+                "user_id": order.get("user_id"),
+                "points_amount": order.get("total_paid"),
+                "point_reference_id": order.get("point_id"),
+                "payment_id": order.get("payment_id"),
+                "qty": order.get("qty"),
+            })
 
         print(f"[Consumer] Found {len(orders)} orders for listing {listing_id}")
 
         for order in orders:
             print(f"[Consumer] Processing order {order['id']}")
-        publish_refund_batch(orders)
+
+        if orders:
+            publish_refund_batch(orders)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
 

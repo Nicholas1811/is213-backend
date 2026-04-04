@@ -6,7 +6,6 @@ from typing import Optional
 from pydantic import BaseModel, ValidationError
 from class_model.input_model import RefundRequest
 
-
 app = Flask(__name__)
 temporal_client = None
 
@@ -65,7 +64,7 @@ def send_notification(data=None):
     async def start_workflow():
         return await temporal_client.execute_workflow(
             "RefundWorkflow",
-            data,
+            payload,
             id=workflow_id,
             task_queue="refund-task-queue",
         )

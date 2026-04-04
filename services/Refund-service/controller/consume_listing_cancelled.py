@@ -5,6 +5,7 @@ import time
 
 from controller.refund_controller import process_refund
 from controller.notification_publisher import publish_event
+from .order_status_publisher import publish_order_refunded
 
 EXCHANGE_NAME = "refund.events"
 ROUTING_KEY = "refund.batch.requested"
@@ -65,14 +66,29 @@ def on_refund_batch(ch, method, properties, body):
         for order in orders:
             try:
                 order_id = order.get("id")
+                user_id = order.get("user_id")
 
                 if not order_id:
                     print("[Refund] Skipping invalid order (no id)")
                     continue
 
+                if not user_id:
+                    print(f"[Refund] Skipping invalid order {order_id} (no user_id)")
+                    continue
+
+                refund_payload = {
+                    "order_id": order_id,
+                    "user_id": user_id,
+                    "points_amount": order.get("points_amount"),
+                    "point_reference_id": order.get("point_reference_id"),
+                    "payment_id": order.get("payment_id"),
+                    "qty": order.get("qty"),
+                }
+
                 print(f"[Refund] Processing order {order_id}")
-                process_refund(order)
-                publish_event(order_id, order.get("user_id"))
+                process_refund(refund_payload)
+                publish_order_refunded(order_id, user_id)
+                publish_event(order_id, user_id)
 
                 print(f"[Refund] Success for order {order_id}")
 
