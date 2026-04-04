@@ -1,13 +1,18 @@
 import pika
 import json
 import os
-import uuid
-from datetime import datetime
+from decimal import Decimal
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 EXCHANGE_NAME = "refund.events"
 ROUTING_KEY = "refund.batch.requested"
+
+
+def _json_default(value):
+    if isinstance(value, Decimal):
+        return float(value)
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 
 def publish_refund_batch(orders: list[dict]):
@@ -34,7 +39,7 @@ def publish_refund_batch(orders: list[dict]):
     channel.basic_publish(
         exchange=EXCHANGE_NAME,
         routing_key=ROUTING_KEY,
-        body=json.dumps(message),
+        body=json.dumps(message, default=_json_default),
         properties=pika.BasicProperties(
             delivery_mode=2  # persistent
         )
