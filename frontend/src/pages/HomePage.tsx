@@ -3,12 +3,31 @@ import { Leaf, ShoppingBag, Store } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/store/authStore";
 import { APP_NAME, UserRole } from "@/lib/constants";
+import { useKeycloak } from "@react-keycloak/web";
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { keycloak } = useKeycloak();
   const setRole = useAuthStore((s) => s.setRole);
 
   function handleRoleSelect(role: UserRole) {
+    // If already authenticated, respect the actual Keycloak role
+    if (keycloak.authenticated) {
+      const isBuyer = keycloak.hasRealmRole("buyer");
+      const isSeller = keycloak.hasRealmRole("seller");
+
+      if (isBuyer) {
+        setRole(UserRole.BUYER);
+        navigate("/buyer");
+        return;
+      } else if (isSeller) {
+        setRole(UserRole.SELLER);
+        navigate("/seller");
+        return;
+      }
+    }
+
+    // Otherwise (unauthenticated or no specific role), proceed with selection
     setRole(role);
     // Navigation is protected by ProtectedRoute in router.tsx
     navigate(role === UserRole.BUYER ? "/buyer" : "/seller");
