@@ -88,6 +88,7 @@ def on_refund_batch(ch, method, properties, body):
                 print(f"[Refund] Processing order {order_id}")
                 process_refund(refund_payload)
                 publish_order_refunded(order_id, user_id)
+                ##Should publish to affected users.
                 publish_event(order_id, user_id)
 
                 print(f"[Refund] Success for order {order_id}")

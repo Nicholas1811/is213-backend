@@ -141,55 +141,55 @@ def event_dictionary(event):
     sample_dict = {
         "order.created" : {
             "title" : "Order created",
-            "body" : f"Your order has been created. The order id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your order has been created. The order id is {event['event_original_id']}."
         },
         "order.success" : {
             "title" : "Order Success",
-            "body" : f"Your order has been successfully processed. The order id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your order has been successfully processed. The order id is {event['event_original_id']}."
         },
         "order.failure" : {
             "title" : "Order failure",
-            "body" : f"Your order has failed. The order id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your order has failed. The order id is {event['event_original_id']}."
         },
         "point.created" : {
             "title" : "Point created",
-            "body" : f"Your point request has been created. The point tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your point request has been created. The point tracking id is {event['event_original_id']}."
         },
         "point.success" : {
             "title" : "Point success",
-            "body" : f"Your point request has been processed successfully. The point tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your point request has been processed successfully. The point tracking id is {event['event_original_id']}."
         },
         "point.failure" : {
             "title" : "Point failure",
-            "body" : f"Your point request has failed. The point tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your point request has failed. The point tracking id is {event['event_original_id']}."
         },
         "payment.created" : {
             "title" : "Payment created",
-            "body" : f"Your payment request has been created. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your payment request has been created. The payment tracking id is {event['event_original_id']}."
         },
         "payment.success" : {
             "title" : "Payment success",
-            "body" : f"Your payment request has succeeded. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your payment request has succeeded. The payment tracking id is {event['event_original_id']}."
         },
         "payment.failure" : {
             "title" : "Payment failure",
-            "body" : f"Your payment request has failed. The payment tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your payment request has failed. The payment tracking id is {event['event_original_id']}."
         },
         'refund.created':{
             "title" : "Refund created",
-            "body" : f"Your refund request has been created. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your refund request has been created. The refund tracking id is {event['event_original_id']}."
         },
         'refund.success':{
             "title" : "Refund success",
-            "body" : f"Your refund request has succeeded. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your refund request has succeeded. The refund tracking id is {event['event_original_id']}."
         },
         'refund.failure':{
             "title" : "Refund failure",
-            "body" : f"Your refund request has failed. The refund tracking id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your refund request has failed. The refund tracking id is {event['event_original_id']}."
         },
         'purchase.success':{
             "title" : "Purchase success",
-            "body" : f"Your purchase is done. The purchase is id is {event['event_original_id']}. To view more, click on me!"
+            "body" : f"Your purchase is done. The purchase is id is {event['event_original_id']}."
         },
         'order.cancelled':{
             "title" : "Order cancelled",
