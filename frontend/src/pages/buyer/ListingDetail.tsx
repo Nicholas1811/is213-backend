@@ -83,6 +83,8 @@ export default function ListingDetail() {
       });
 
       if ("checkout_url" in response && response.checkout_url) {
+        //Test the push notif.
+        //window.open(response.checkout_url, "_blank");
         window.location.assign(response.checkout_url);
         return;
       }
