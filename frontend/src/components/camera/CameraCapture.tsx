@@ -6,9 +6,15 @@ interface CameraCaptureProps {
   onCapture: (photo: Blob) => void;
   label?: string;
   className?: string;
+  hideRetake?: boolean;
 }
 
-export default function CameraCapture({ onCapture, label = "Take Photo", className = "" }: CameraCaptureProps) {
+export default function CameraCapture({ 
+  onCapture, 
+  label = "Take Photo", 
+  className = "",
+  hideRetake = false
+}: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -150,10 +156,12 @@ export default function CameraCapture({ onCapture, label = "Take Photo", classNa
               <Badge />
             </div>
           </div>
-          <Button variant="outline" onClick={retake} className="w-full mt-3 gap-2">
-            <RotateCcw className="h-4 w-4" />
-            Retake
-          </Button>
+          {!hideRetake && (
+            <Button variant="outline" onClick={retake} className="w-full mt-3 gap-2">
+              <RotateCcw className="h-4 w-4" />
+              Retake
+            </Button>
+          )}
         </div>
       )}
 

@@ -227,6 +227,7 @@ export default function EarnPoints() {
             <CameraCapture
               label="Capture your plate after eating"
               onCapture={handleSubmit}
+              hideRetake={true}
             />
             {isSubmitting && (
               <div className="text-center">
