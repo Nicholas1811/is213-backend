@@ -111,7 +111,7 @@ services:
       context: ./order-service
       dockerfile: Dockerfile
     container_name: order-worker
-    command: python consume_listing_cancelled.py
+    command: python -u consume_listing_cancelled.py
     restart: on-failure
     env_file:
       - ./.env
