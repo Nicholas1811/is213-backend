@@ -207,7 +207,7 @@ Cancel a listing. Sets status to `cancelled`.
 
 | Event | Action |
 |-------|--------|
-| `listing.processed` | AI finishes processing — updates listing fields (name, description, qty, price, status, bestBefore) |
+| `listing.processed` | AI finishes processing and publishes on `ai.events`; listing-service consumes from `listing.sync.q` and updates listing fields (name, description, qty, price, status, bestBefore) |
 
 ---
 
@@ -220,6 +220,8 @@ Cancel a listing. Sets status to `cancelled`.
 | `DATABASE_URL` | — | PostgreSQL connection string |
 | `LOG_LEVEL` | `info` | Pino log level |
 | `RABBITMQ_URL` | `amqp://localhost:5672` | RabbitMQ connection URL |
-| `RABBITMQ_EXCHANGE` | `dev.events` | Exchange name |
-| `RABBITMQ_QUEUE` | `dev.listing.sync.q` | Queue name for processed listing events consumed by listing-service |
+| `RABBITMQ_LISTING_EXCHANGE` | `listing.events` | Exchange used by listing-service when publishing listing-originated events |
+| `RABBITMQ_QUEUE` | `listing.sync.q` | Queue name for processed listing events consumed by listing-service |
+| `RABBITMQ_LISTING_SYNC_EXCHANGE` | `ai.events` | AI-owned exchange that listing-service binds to for processed listing events |
+| `RABBITMQ_LISTING_SYNC_ROUTING_KEY` | `ai.listing.processed` | Routing key that `listing.sync.q` binds on `ai.events` |
 | `RABBITMQ_PREFETCH` | `20` | Max unacked messages |

@@ -34,7 +34,7 @@ export async function publishListingEvent(event: ListingEvent): Promise<boolean>
 
       const payload = Buffer.from(JSON.stringify(event));
       const buffered = publishChannel.publish(
-        rabbitConfig.exchange,
+        rabbitConfig.listingPublish.exchange,
         event.eventName,
         payload,
         {

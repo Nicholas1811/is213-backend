@@ -1,6 +1,6 @@
 import logging
 
-from app.config import LISTING_PROCESSED_ROUTING_KEY, RABBITMQ_EXCHANGE
+from app.config import AI_EVENTS_EXCHANGE, LISTING_PROCESSED_ROUTING_KEY
 from app.messaging.publisher import Publisher
 from app.schemas.listing_uploaded import ListingUploadRequest
 from app.services.listing_process_service import ListingProcessService
@@ -26,7 +26,7 @@ class ListingUploadedHandlder:
         response = await self.listing_process_service.process(incoming_message)
 
         await self.publisher.publish(
-            exchange_name=RABBITMQ_EXCHANGE,
+            exchange_name=AI_EVENTS_EXCHANGE,
             routing_key=LISTING_PROCESSED_ROUTING_KEY,
             payload=response.model_dump(by_alias=True),
         )

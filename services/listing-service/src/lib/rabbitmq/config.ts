@@ -2,15 +2,15 @@ import env from "@/env";
 
 export const rabbitConfig = {
   url: env.RABBITMQ_URL,
-  exchange: env.RABBITMQ_EXCHANGE,
-  exchangeType: "topic" as const,
-  queue: env.RABBITMQ_QUEUE,
-  routingKeys: ["listing.processed"] as const,
+  listingPublish: {
+    exchange: env.RABBITMQ_LISTING_EXCHANGE,
+    exchangeType: "topic" as const,
+  },
   listingSync: {
-    exchange: env.RABBITMQ_EXCHANGE,
+    exchange: env.RABBITMQ_LISTING_SYNC_EXCHANGE,
     exchangeType: "topic" as const,
     queue: env.RABBITMQ_QUEUE,
-    routingKeys: ["listing.processed"] as const,
+    routingKeys: [env.RABBITMQ_LISTING_SYNC_ROUTING_KEY] as const,
   },
   cancelOrder: {
     exchange: env.RABBITMQ_CANCEL_ORDER_EXCHANGE,

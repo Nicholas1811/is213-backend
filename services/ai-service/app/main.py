@@ -11,15 +11,16 @@ from app.clients.rabbitmq_client import RabbitMQClient
 from app.vision import ImageLoader, ScreenReplayDetector, ScreenReplayModel
 
 from app.config import (
+    AI_EVENTS_EXCHANGE,
     AI_CONSUME_QUEUE,
     AI_RESULT_QUEUE,
     AI_RESULT_ROUTING_KEY,
     AI_TASK_QUEUE,
     AI_TASK_ROUTING_KEY,
+    LISTING_EVENTS_EXCHANGE,
     LISTING_PROCESSED_ROUTING_KEY,
     LISTING_UPLOADED_ROUTING_KEY,
     POINTS_VERIFICATION_EXCHANGE,
-    RABBITMQ_EXCHANGE,
     SCREEN_REPLAY_DETECTOR_ENABLED,
     SCREEN_REPLAY_FETCH_TIMEOUT_SECONDS,
     SCREEN_REPLAY_MODEL_ENABLED,
@@ -83,7 +84,7 @@ async def main() -> None:
     listing_consumer = Consumer(
         rabbitmq_client=rabbitmq_client,
         queue_name=AI_CONSUME_QUEUE,
-        exchange_name=RABBITMQ_EXCHANGE,
+        exchange_name=LISTING_EVENTS_EXCHANGE,
         routing_key=LISTING_UPLOADED_ROUTING_KEY,
         handler=listing_handler.handle,
     )
@@ -100,7 +101,12 @@ async def main() -> None:
     await points_consumer.start()
 
     logger.info("Consumers started")
-    logger.info("RabbitMQ connection is done")
+    logger.info(
+        "RabbitMQ connection is done listing_events_exchange=%s ai_events_exchange=%s processed_routing_key=%s",
+        LISTING_EVENTS_EXCHANGE,
+        AI_EVENTS_EXCHANGE,
+        LISTING_PROCESSED_ROUTING_KEY,
+    )
     await asyncio.Future()
 
 
