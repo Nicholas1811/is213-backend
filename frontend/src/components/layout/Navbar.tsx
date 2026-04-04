@@ -9,6 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { usePointsStore } from "@/store/pointsStore";
 import { useNotificationStore } from "@/store/notificationStore";
@@ -19,9 +26,11 @@ import { useKeycloak } from "@react-keycloak/web";
 import { useAuthStore } from "@/store/authStore";
 import { isKeycloakConfigured } from "@/lib/keycloak";
 import { resolveNotificationUserId } from "@/lib/notificationUser";
+import { Menu } from "lucide-react";
 
 export default function Navbar() {
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { keycloak, initialized } = useKeycloak();
   const clearAuth = useAuthStore((s) => s.clearAuth);
@@ -129,6 +138,48 @@ export default function Navbar() {
           <Leaf className="h-6 w-6 text-primary" />
           <span className="text-xl font-bold text-primary">{APP_SHORT_NAME}</span>
         </Link>
+
+        {/* Mobile Nav Trigger */}
+        {navLinks.length > 0 && (
+          <div className="flex md:hidden">
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+                <SheetHeader className="mb-8">
+                  <SheetTitle className="flex items-center gap-2 text-left">
+                    <Leaf className="h-6 w-6 text-primary" />
+                    <span>{APP_SHORT_NAME}</span>
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-4">
+                  {navLinks.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Button
+                        variant={location.pathname === link.to ? "secondary" : "ghost"}
+                        className={cn(
+                          "w-full justify-start gap-4 text-lg",
+                          location.pathname === link.to && "bg-primary/10 text-primary"
+                        )}
+                      >
+                        <link.icon className="h-5 w-5" />
+                        {link.label}
+                      </Button>
+                    </Link>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
+        )}
 
         {/* Nav Links */}
         {navLinks.length > 0 && (
