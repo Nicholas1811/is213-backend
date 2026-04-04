@@ -2,6 +2,7 @@ import pika
 import json
 import time
 from sqlalchemy import text
+from produce_listing_cancelled import publish_refund_batch
 
 # 🔥 import your DB engine + serializer
 from order import _db_engine, _serialize_row
@@ -28,8 +29,8 @@ def callback(ch, method, properties, body):
         event = json.loads(body)
         print(f"[Consumer] Received listing.cancelled: {event}")
 
-        listing = event.get("data", {})
-        listing_id = listing.get("id")
+        #listing = event.get("data", {})
+        listing_id = str(event["data"]["id"])
 
         if not listing_id:
             raise ValueError("Missing listing_id in event")
@@ -46,25 +47,30 @@ def callback(ch, method, properties, body):
 
         for order in orders:
             print(f"[Consumer] Processing order {order['id']}")
-
+        publish_refund_batch(orders)
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
 
     except Exception as e:
         print(f"[Consumer] Error: {e}")
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 def main():
+    print("Connet")
     connection = connect()
     channel = connection.channel()
 
+    print("Declare exchange")
     channel.exchange_declare(
         exchange=EXCHANGE_NAME,
         exchange_type="topic",
         durable=True
     )
 
+    print("Queue declare")
     channel.queue_declare(queue=QUEUE_NAME, durable=True)
 
+    print("Queue bind")
     channel.queue_bind(
         exchange=EXCHANGE_NAME,
         queue=QUEUE_NAME,

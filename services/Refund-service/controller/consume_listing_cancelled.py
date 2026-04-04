@@ -3,7 +3,6 @@ import json
 import os
 import time
 
-from controller.constants import REFUND_TASK_QUEUE
 from controller.refund_controller import process_refund
 from controller.notification_publisher import publish_event
 
@@ -32,18 +31,18 @@ def start_refund_consumer():
         durable=True
     )
 
-    channel.queue_declare(queue=REFUND_TASK_QUEUE, durable=True)
+    channel.queue_declare(queue="LISTING_CANCELLED_REFUND", durable=True)
 
     channel.queue_bind(
         exchange=EXCHANGE_NAME,
-        queue=REFUND_TASK_QUEUE,
+        queue="LISTING_CANCELLED_REFUND",
         routing_key=ROUTING_KEY
     )
 
     channel.basic_qos(prefetch_count=1)
 
     channel.basic_consume(
-        queue=REFUND_TASK_QUEUE,
+        queue="LISTING_CANCELLED_REFUND",
         on_message_callback=on_refund_batch,
         auto_ack=False
     )

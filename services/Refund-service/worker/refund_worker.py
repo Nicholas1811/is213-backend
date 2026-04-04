@@ -8,6 +8,7 @@ from activities.payment_activity import refund_payment
 from activities.point_activity import deduct_points_compensation, restore_points
 from workflows.refund_workflow import RefundWorkflow
 from controller.consumer import start_order_result_consumer
+from controller.consume_listing_cancelled import start_refund_consumer
 
 async def connect_temporal():
     while True:
@@ -22,6 +23,7 @@ async def connect_temporal():
 async def main():
     # start rabbitmq consumer
     threading.Thread(target=start_order_result_consumer, daemon=True).start()
+    threading.Thread(target=start_refund_consumer, daemon=True).start()
 
     client = await connect_temporal()
     with concurrent.futures.ThreadPoolExecutor(max_workers=100) as activity_executor:
