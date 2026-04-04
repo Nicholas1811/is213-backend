@@ -77,10 +77,10 @@ export default function CameraCapture({
     );
   }, [onCapture, stopCamera]);
 
-  const retake = useCallback(() => {
-    setCapturedImage(null);
-    startCamera();
-  }, [startCamera]);
+  // const retake = useCallback(() => {
+  //   setCapturedImage(null);
+  //   startCamera();
+  // }, [startCamera]);
 
   // Attach stream to video element after render
   useEffect(() => {
@@ -156,12 +156,12 @@ export default function CameraCapture({
               <Badge />
             </div>
           </div>
-          {!hideRetake && (
-            <Button variant="outline" onClick={retake} className="w-full mt-3 gap-2">
-              <RotateCcw className="h-4 w-4" />
-              Retake
-            </Button>
-          )}
+          {/*{!hideRetake && (*/}
+          {/*  <Button variant="outline" onClick={retake} className="w-full mt-3 gap-2">*/}
+          {/*    <RotateCcw className="h-4 w-4" />*/}
+          {/*    Retake*/}
+          {/*  </Button>*/}
+          {/*)}*/}
         </div>
       )}
 
