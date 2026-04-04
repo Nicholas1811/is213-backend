@@ -25,10 +25,11 @@ def connect():
 
 def callback(ch, method, properties, body):
     try:
-        data = json.loads(body)
-        print(f"[Consumer] Received listing.cancelled: {data}")
+        event = json.loads(body)
+        print(f"[Consumer] Received listing.cancelled: {event}")
 
-        listing_id = data.get("listing_id")
+        listing = event.get("data", {})
+        listing_id = listing.get("id")
 
         if not listing_id:
             raise ValueError("Missing listing_id in event")
@@ -50,6 +51,7 @@ def callback(ch, method, properties, body):
 
     except Exception as e:
         print(f"[Consumer] Error: {e}")
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
 def main():
     connection = connect()

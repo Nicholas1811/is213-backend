@@ -59,6 +59,7 @@ services:
       - ./.env
     expose:
       - "8080"
+    
 
   payment-service:
     build:
@@ -101,6 +102,9 @@ services:
     networks:
       - temporal-network
       - default
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   point-service:
     build:
