@@ -16,6 +16,7 @@ import CreateListing from "@/pages/seller/CreateListing";
 import ManualListingForm from "@/pages/seller/ManualListingForm";
 import AIListingFlow from "@/pages/seller/AIListingFlow";
 import MyListings from "@/pages/seller/MyListings";
+import { UserRole } from "@/lib/constants";
 
 export const router = createBrowserRouter([
   {
@@ -30,7 +31,7 @@ export const router = createBrowserRouter([
       {
         path: "buyer",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole={UserRole.BUYER}>
             <BuyerLayout />
           </ProtectedRoute>
         ),
@@ -69,7 +70,7 @@ export const router = createBrowserRouter([
       {
         path: "seller",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole={UserRole.SELLER}>
             <SellerLayout />
           </ProtectedRoute>
         ),
