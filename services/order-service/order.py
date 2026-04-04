@@ -213,7 +213,7 @@ def update_order_status(order_id: int) -> tuple[dict[str, str], int]:
 
 			# Step 3: Perform the update
 			connection.execute(
-				text("UPDATE orders SET status = 'CANCELLED' WHERE id = :id"),
+				text("UPDATE orders SET status = 'REFUND' WHERE id = :id"),
 				{"id": order_id},
 			)
 

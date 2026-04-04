@@ -36,6 +36,8 @@ import type { ApiUserOrderItem } from "@/api/types/order";
 
 const statusConfig = {
   pending: { label: "Pending", icon: Clock, variant: "secondary" as const },
+  refunding: { label: "Refund Pending", icon: Clock, variant: "secondary" as const },
+  refunded: { label: "Refunded", icon: CheckCircle2, variant: "default" as const },
   confirmed: { label: "Confirmed", icon: Package, variant: "default" as const },
   completed: { label: "Completed", icon: CheckCircle2, variant: "default" as const },
   cancelled: { label: "Cancelled", icon: XCircle, variant: "destructive" as const },
@@ -44,6 +46,10 @@ const statusConfig = {
 function normalizeOrderStatus(status: string): keyof typeof statusConfig {
   const normalized = status.toLowerCase();
 
+  if (normalized === "refund_pending" || normalized === "refunding" || normalized === "refund_requested") {
+    return "refunding";
+  }
+  if (normalized === "refunded") return "refunded";
   if (normalized === "confirmed" || normalized === "paid") return "confirmed";
   if (normalized === "completed" || normalized === "delivered") return "completed";
   if (normalized === "cancelled" || normalized === "canceled" || normalized === "failed") {
@@ -71,6 +77,7 @@ export default function MyOrders() {
 
   useEffect(() => {
     let mounted = true;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
     if (!initialized) {
       return () => {
@@ -101,9 +108,15 @@ export default function MyOrders() {
     }
 
     void loadOrders();
+    intervalId = setInterval(() => {
+      void loadOrders();
+    }, 10000);
 
     return () => {
       mounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
   }, [initialized, keycloak.subject]);
 
@@ -120,9 +133,9 @@ export default function MyOrders() {
     try {
       await cancelOrder(String(orderToCancel));
       
-      // Optimistic update
+      // Optimistic update while awaiting async refund completion event
       setOrders(prev => prev.map(order => 
-        String(order.id) === String(orderToCancel) ? { ...order, status: "CANCELLED" } : order
+        String(order.id) === String(orderToCancel) ? { ...order, status: "REFUNDED" } : order
       ));
     } catch (err) {
       console.error("Failed to cancel order:", err);
@@ -224,11 +237,13 @@ export default function MyOrders() {
                     <TableHead>Point ID</TableHead>
                     <TableHead>Payment ID</TableHead>
                     <TableHead>Quantity</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="w-12.5"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {orders.map((order) => {
+                    const rawStatus = (order.status || "").toLowerCase();
+                    const isPaid = rawStatus === "paid";
                     const normalized = normalizeOrderStatus(order.status || "pending");
                     const config = statusConfig[normalized];
                     const StatusIcon = config.icon;
@@ -238,7 +253,10 @@ export default function MyOrders() {
                         <TableCell>{String(order.id)}</TableCell>
                         <TableCell>{String(order.listingId)}</TableCell>
                         <TableCell>
-                          <Badge variant={config.variant} className="gap-1">
+                          <Badge
+                            variant={config.variant}
+                            className={isPaid ? "gap-1 bg-green-100 text-green-700 hover:bg-green-100" : "gap-1"}
+                          >
                             <StatusIcon className="h-3 w-3" />
                             {order.status || config.label}
                           </Badge>
@@ -247,20 +265,20 @@ export default function MyOrders() {
                         <TableCell>
                           {order.pointId == null 
                             ? "-" 
-                            : normalized === "cancelled"
+                            : normalized === "cancelled" || normalized === "refunded"
                               ? <span className="text-muted-foreground line-through">{String(order.pointId)}</span>
                               : String(order.pointId)}
-                          {normalized === "cancelled" && order.pointId != null && (
+                          {(normalized === "cancelled" || normalized === "refunded") && order.pointId != null && (
                             <span className="ml-1 text-xs text-destructive font-medium">(Used)</span>
                           )}
                         </TableCell>
                         <TableCell>
                           {order.paymentId == null 
                             ? "-" 
-                            : normalized === "cancelled"
+                            : normalized === "cancelled" || normalized === "refunded"
                               ? <span className="text-muted-foreground line-through">{String(order.paymentId)}</span>
                               : String(order.paymentId)}
-                          {normalized === "cancelled" && order.paymentId != null && (
+                          {(normalized === "cancelled" || normalized === "refunded") && order.paymentId != null && (
                             <span className="ml-1 text-xs text-destructive font-medium">(Used)</span>
                           )}
                         </TableCell>

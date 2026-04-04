@@ -122,6 +122,22 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  order-status-worker:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: order-status-worker
+    command: python -u consume_order_status.py
+    restart: on-failure
+    env_file:
+      - ./.env
+    networks:
+      - temporal-network
+      - default
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   point-service:
     build:
       context: ./points-service
