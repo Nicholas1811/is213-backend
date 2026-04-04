@@ -106,6 +106,22 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  order-worker:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: order-worker
+    command: python consume_listing_cancelled.py
+    restart: on-failure
+    env_file:
+      - ./.env
+    networks:
+      - temporal-network
+      - default
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   point-service:
     build:
       context: ./points-service
