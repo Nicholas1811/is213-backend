@@ -14,4 +14,4 @@ class RefundRequest(BaseModel):
     order_id: int
     user_id: str
     point_reference_id: Optional[str] = None
-    payment_intent_id: Optional[str] = None
+    payment_checkout_id: Optional[str] = None
