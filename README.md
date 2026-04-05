@@ -52,15 +52,14 @@ Browser (localhost:5173)
         ▼
 Kong API Gateway (localhost:8000)
         │
-        ├── listing-service          Node.js · TypeScript · Hono · Drizzle ORM
-        ├── user-service             Python 3.12 · FastAPI
-        ├── payment-service          Python 3.12 · Stripe
-        ├── order-service            Python 3.12
-        ├── points-service           Python 3.12
-        ├── ai-service               Python 3.11 · OpenAI
-        ├── CreateListing-service    Python  [Composite]
-        ├── PurchasedListing-service Python · Temporal  [Composite]
-        └── Refund-service           Python · Temporal  [Composite]
+        ├── listing-service        (Node.js/TypeScript · Hono · Drizzle ORM)
+        ├── user-service           (Python 3.12 · FastAPI)
+        ├── payment-service        (Python 3.12 · Stripe)
+        ├── order-service          (Python 3.12 · Flask)
+        ├── points-service         (Python 3.12 · FastAPI)
+        ├── ai-service             (Python 3.11 · OpenAI)
+        ├── PurchasedListing-service (Python · Temporal · Composite)
+        └── Refund-service         (Python · Temporal · Composite)
 
 Supporting Infrastructure
         ├── Keycloak               Auth server         (localhost:8081)
