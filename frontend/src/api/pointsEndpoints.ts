@@ -2,6 +2,7 @@ import apiClient from "@/api/client";
 import { ENDPOINTS } from "@/api/endpoints";
 import type {
   PointTransaction,
+  PointsBalance,
   SubmitMealPhotosRequest,
   SubmitMealPhotosResponse,
   UploadBeforePhotoResponse,
@@ -210,12 +211,13 @@ export async function getPhotoStatus(transactionId: string) {
     return res.json();
 }
 
-export async function getUserPointBalance(userID:string){
-    const res = await fetch(
-        `http://localhost:8000/points/balance/${userID}`
-    );
+export async function getUserPointBalance(userID: string): Promise<PointsBalance> {
+  const { data } = await apiClient.get<{ balance: number }>(
+    `${ENDPOINTS.POINTS_BALANCE}/${encodeURIComponent(userID)}`
+  );
 
-    if (!res.ok) throw new Error("Failed to fetch status");
-
-    return res.json();
+  return {
+    userId: userID,
+    balance: Number(data.balance) || 0,
+  };
 }

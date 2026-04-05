@@ -39,12 +39,20 @@ export interface PurchaseStatusResponse {
   status: string;
 }
 
+export interface PurchaseProcessingResponse {
+  message: string;
+  workflow_id?: string;
+}
+
 export interface PurchaseCheckoutResponse {
   checkout_url: string;
   checkout_id: string;
 }
 
-export type PurchaseResponse = PurchaseStatusResponse | PurchaseCheckoutResponse;
+export type PurchaseResponse =
+  | PurchaseStatusResponse
+  | PurchaseProcessingResponse
+  | PurchaseCheckoutResponse;
 
 export interface ApiUserOrderItem {
   id: string | number;

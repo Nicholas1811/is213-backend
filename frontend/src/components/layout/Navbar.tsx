@@ -17,6 +17,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { getUserPointBalance } from "@/api/pointsEndpoints";
 import { usePointsStore } from "@/store/pointsStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import { APP_SHORT_NAME, UserRole } from "@/lib/constants";
@@ -52,6 +53,7 @@ export default function Navbar() {
 
 
   const balance = usePointsStore((s) => s.balance);
+  const setBalance = usePointsStore((s) => s.setBalance);
   const notifications = useNotificationStore((s) => s.notifications);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const markAllAsRead = useNotificationStore((s) => s.markAllAsRead);
@@ -129,6 +131,47 @@ export default function Navbar() {
 
     void hydrateFromApi(keycloakId);
   }, [hydrateFromApi, initialized, keycloakId]);
+
+  useEffect(() => {
+    if (!isBuyer) {
+      setBalance(0);
+      return;
+    }
+
+    if (isKeycloakConfigured && !initialized) {
+      return;
+    }
+
+    const subjectId = keycloak.subject;
+    if (!subjectId) {
+      setBalance(0);
+      return;
+    }
+    const resolvedSubjectId: string = subjectId;
+
+    let cancelled = false;
+
+    async function loadBalance() {
+      try {
+        const { balance } = await getUserPointBalance(resolvedSubjectId);
+        if (!cancelled) {
+          setBalance(balance);
+        }
+      }
+      catch (error) {
+        console.error("Failed to load points balance", error);
+        if (!cancelled) {
+          setBalance(0);
+        }
+      }
+    }
+
+    void loadBalance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialized, isBuyer, keycloak.subject, setBalance]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -262,7 +305,7 @@ export default function Navbar() {
                 className="gap-1 bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
               >
                 <Coins className="h-3 w-3" />
-                {balance} pts
+                {balance.toLocaleString()} pts
               </Badge>
             </Link>
           )}
