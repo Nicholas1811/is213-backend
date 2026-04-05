@@ -7,6 +7,9 @@ def fetch_user_points(user_id):
 def fetch_user_transactions(user_id):
     return PointTransaction.query.filter_by(user_id=user_id).order_by(PointTransaction.created_at.desc()).all()
 
+def fetch_transaction_by_id(transaction_id):
+    return PointTransaction.query.get(transaction_id)
+
 def create_new_transaction(validated_data):
     new_tx = PointTransaction(
         user_id=validated_data.user_id,

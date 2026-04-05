@@ -41,6 +41,21 @@ def get_user_transaction(user_id):
 
     return jsonify({"user_id": str(user_id), "transactions": outputs}), 200
 
+@app.route('/transaction/details/<uuid:transaction_id>', methods=['GET'])
+def get_transaction_details(transaction_id):
+    record = services.fetch_transaction_by_id(transaction_id)
+    if not record:
+        return jsonify({"status": "error", "message": "Transaction not found"}), 404
+        
+    return jsonify({
+        "transaction_id": str(record.id),
+        "user_id": str(record.user_id),
+        "points_changed": record.points_changed,
+        "type": record.transaction_type,
+        "reference_id": record.reference_id,
+        "timestamp": record.created_at.isoformat()
+    }), 200
+
 @app.route('/transaction', methods=['POST'])
 def create_transaction():
     try:
