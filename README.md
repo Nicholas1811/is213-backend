@@ -46,34 +46,263 @@
 
 ## Architecture Overview
 
+```mermaid
+graph TD
+    Browser["🌐 Browser · localhost:5173"]
+    Kong["⚡ Kong API Gateway · localhost:8000"]
+    Browser -->|HTTPS| Kong
+
+    subgraph atomic["⚙️ Atomic Services"]
+        listing["listing-service\nNode.js · Hono · Drizzle"]
+        user["user-service\nPython · FastAPI"]
+        payment["payment-service\nPython · Stripe"]
+        order["order-service\nPython · Flask"]
+        points["points-service\nPython · FastAPI"]
+        ai["ai-service\nPython · OpenAI"]
+    end
+
+    subgraph composite["🔄 Composite Services"]
+        purchase["PurchasedListing-service\nPython · Temporal"]
+        refund["Refund-service\nPython · Temporal"]
+    end
+
+    Kong --> listing & user & payment & order & points & purchase & refund
+
+    subgraph messaging["📨 Messaging"]
+        rabbit[("RabbitMQ")]
+        notify["notification-mgmt\nPython · Firebase"]
+    end
+
+    listing & order & points & ai & purchase & refund -->|publish| rabbit
+    rabbit -->|consume| notify
+
+    subgraph workflows["⏱️ Workflow Engine"]
+        temporal["Temporal · localhost:7233"]
+    end
+
+    purchase & refund --> temporal
+
+    subgraph auth["🔐 Auth"]
+        keycloak["Keycloak · localhost:8081"]
+    end
+
+    user --> keycloak
+
+    subgraph database["🗄️ Database"]
+        rds[("AWS RDS PostgreSQL\nap-southeast-1")]
+    end
+
+    listing & user & payment & order & points & keycloak --> rds
 ```
-Browser (localhost:5173)
-        │
-        ▼
-Kong API Gateway (localhost:8000)
-        │
-        ├── listing-service        (Node.js/TypeScript · Hono · Drizzle ORM)
-        ├── user-service           (Python 3.12 · FastAPI)
-        ├── payment-service        (Python 3.12 · Stripe)
-        ├── order-service          (Python 3.12 · Flask)
-        ├── points-service         (Python 3.12 · FastAPI)
-        ├── ai-service             (Python 3.11 · OpenAI)
-        ├── PurchasedListing-service (Python · Temporal · Composite)
-        └── Refund-service         (Python · Temporal · Composite)
 
-Supporting Infrastructure
-        ├── Keycloak               Auth server         (localhost:8081)
-        ├── RabbitMQ               Message broker      (localhost:15672 UI)
-        ├── Temporal               Workflow engine     (localhost:7233)
-        ├── Temporal UI                                (localhost:8090)
-        ├── Stripe CLI             Webhook forwarder
-        ├── Prometheus             Metrics scraper     (localhost:9090)
-        └── Grafana                Monitoring UI       (localhost:3000)
+> **Convention**: Atomic services are lowercase (`listing-service`). Composite services start with uppercase (`PurchasedListing-service`).
 
-Database: AWS RDS PostgreSQL (external, ap-southeast-1)
+---
+
+## Key Flows
+
+### 1. Product Shopping
+
+```mermaid
+sequenceDiagram
+    actor Buyer
+    participant FE as Frontend
+    participant GW as Kong Gateway
+    participant LS as listing-service
+
+    Buyer->>FE: Browse meal deals
+    FE->>GW: GET /listings
+    GW->>LS: Forward request
+    LS-->>GW: Return available listings
+    GW-->>FE: Listings payload
+    FE-->>Buyer: Display meal deals
 ```
 
-> **Convention**: Atomic services are lowercase (`listing-service`). Composite services start with uppercase (`CreateListing-service`).
+### 2. Purchasing Order
+
+```mermaid
+sequenceDiagram
+    actor Buyer
+    participant FE as Frontend
+    participant GW as Kong Gateway
+    participant PLS as PurchasedListing-service
+    participant TEMP as Temporal
+    participant PAY as payment-service
+    participant PTS as points-service
+    participant MQ as RabbitMQ
+    participant NOTIF as notification-mgmt
+
+    Buyer->>FE: Click "Buy"
+    FE->>GW: POST /purchase
+    GW->>PLS: Forward request
+    PLS->>TEMP: Start PurchaseWorkflow
+    activate TEMP
+    TEMP->>PAY: Charge buyer via Stripe
+    PAY-->>TEMP: Payment confirmed
+    TEMP->>PTS: Award loyalty points
+    PTS-->>TEMP: Points awarded
+    deactivate TEMP
+    PLS->>MQ: Publish purchase.completed
+    MQ-->>NOTIF: Trigger confirmation email
+    PLS-->>GW: 201 Created
+    GW-->>FE: Order confirmed
+    FE-->>Buyer: Show success screen
+```
+
+### 3. Canceling Order
+
+```mermaid
+sequenceDiagram
+    actor Buyer
+    participant FE as Frontend
+    participant GW as Kong Gateway
+    participant RS as Refund-service
+    participant TEMP as Temporal
+    participant PAY as payment-service
+    participant PTS as points-service
+    participant MQ as RabbitMQ
+    participant NOTIF as notification-mgmt
+
+    Buyer->>FE: Request order cancellation
+    FE->>GW: POST /refund
+    GW->>RS: Forward request
+    RS->>TEMP: Start RefundWorkflow
+    activate TEMP
+    TEMP->>PAY: Reverse Stripe charge
+    PAY-->>TEMP: Reversal confirmed
+    TEMP->>PTS: Deduct loyalty points
+    PTS-->>TEMP: Points deducted
+    deactivate TEMP
+    RS->>MQ: Publish refund.processed
+    MQ-->>NOTIF: Trigger refund email
+    RS-->>GW: 200 OK
+    GW-->>FE: Cancellation confirmed
+    FE-->>Buyer: Show refund confirmation
+```
+
+### 4. Product Listing
+
+```mermaid
+sequenceDiagram
+    actor Seller
+    participant FE as Frontend
+    participant GW as Kong Gateway
+    participant LS as listing-service
+
+    Seller->>FE: View my listings
+    FE->>GW: GET /listings?sellerId={id}
+    GW->>LS: Forward request
+    LS-->>GW: Return seller listings
+    GW-->>FE: Listings payload
+    FE-->>Seller: Display active listings
+```
+
+### 5. Listing New Products
+
+```mermaid
+sequenceDiagram
+    actor Seller
+    participant FE as Frontend
+    participant GW as Kong Gateway
+    participant LS as listing-service
+    participant MQ as RabbitMQ
+    participant AI as ai-service
+    participant OAI as OpenAI
+    participant NOTIF as notification-mgmt
+
+    Seller->>FE: Submit new listing + photos
+    FE->>GW: POST /listings
+    GW->>LS: Forward request
+    LS->>LS: Save listing as draft
+    LS->>MQ: Publish listing.uploaded
+    MQ-->>AI: Consume listing.uploaded
+    AI->>AI: Screen replay precheck (ML model)
+    AI->>OAI: Validate listing images
+    OAI-->>AI: Approved / Rejected
+    AI->>MQ: Publish listing.processed
+    MQ-->>LS: Consume listing.processed
+    LS->>LS: Update listing status to active
+    LS->>MQ: Publish listing.activated
+    MQ-->>NOTIF: Notify seller of result
+    FE-->>Seller: Listing live
+```
+
+### 6. Cancel Listings
+
+```mermaid
+sequenceDiagram
+    actor Seller
+    participant FE as Frontend
+    participant GW as Kong Gateway
+    participant LS as listing-service
+    participant MQ as RabbitMQ
+    participant OS as order-service
+    participant RS as Refund-service
+    participant TEMP as Temporal
+    participant PAY as payment-service
+    participant PTS as points-service
+    participant NOTIF as notification-mgmt
+
+    Seller->>FE: Cancel listing
+    FE->>GW: PATCH /listings/{id}/cancel
+    GW->>LS: Forward request
+    LS->>LS: Mark listing as cancelled
+    LS->>MQ: Publish listing.cancelled
+    MQ-->>OS: Consume listing.cancelled
+    OS->>OS: Find all PAID orders for listing
+    OS->>MQ: Publish refund.batch.requested
+    MQ-->>RS: Consume refund batch
+    loop For each affected order
+        RS->>TEMP: Start RefundWorkflow
+        activate TEMP
+        TEMP->>PAY: Reverse Stripe charge
+        TEMP->>PTS: Deduct loyalty points
+        deactivate TEMP
+    end
+    RS->>MQ: Publish refund.processed (per order)
+    MQ-->>NOTIF: Email affected buyers
+    LS-->>GW: 200 OK
+    GW-->>FE: Listing cancelled
+    FE-->>Seller: Confirm cancellation
+```
+
+### 7. Clean Plate Challenge
+
+```mermaid
+sequenceDiagram
+    actor Buyer
+    participant FE as Frontend
+    participant GW as Kong Gateway
+    participant PTS as points-service
+    participant MQ as RabbitMQ
+    participant AI as ai-service
+    participant OAI as OpenAI
+    participant NOTIF as notification-mgmt
+
+    Buyer->>FE: Upload before & after meal photos
+    FE->>GW: POST /points/verify
+    GW->>PTS: Forward request
+    PTS->>MQ: Publish points.verification.upload
+    MQ-->>AI: Consume verification request
+    AI->>AI: Screen replay precheck (ML model)
+    Note over AI: Reject if photos are screenshots<br/>or screen recordings of food
+    alt Precheck passed
+        AI->>OAI: Send before + after images
+        OAI-->>AI: approved / rejected + confidence
+    end
+    AI->>MQ: Publish points.verification.result
+    MQ-->>PTS: Consume result
+    alt Approved
+        PTS->>PTS: Award bonus points to buyer
+        PTS->>MQ: Publish points.awarded
+        MQ-->>NOTIF: Send points confirmation
+        PTS-->>GW: 200 OK — points awarded
+    else Rejected
+        PTS-->>GW: 200 OK — verification failed
+    end
+    GW-->>FE: Result
+    FE-->>Buyer: Show outcome
+```
 
 ---
 
