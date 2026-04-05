@@ -53,24 +53,38 @@ class PointsVerificationService:
              - a scene that does not appear physically real
 
              After confirming both images show a real meal, decide meal completion:
+             - the before photo must clearly show a meaningful amount of food present at the start; reject if the before photo is already empty, nearly empty, or appears already finished
              - the two images should appear to show the same meal setting, such as a similar plate, tray, table, or surrounding context
+             - the before photo should contain clearly more food than the after photo
              - the after photo should show that the plate or food container is at least 90 percent empty
              - approve only if it is likely the same real meal before and after eating
-             - reject if the images do not appear related, if the after photo still contains substantial food, or if the result is unclear
+             - reject if the images do not appear related, if the before photo is already mostly empty, if the after photo still contains substantial food, or if the result is unclear
              - if you are uncertain at any step, return rejected
 
              Return only valid JSON with exactly these keys:
-             - status
+             - is_real_scene
+             - same_meal_setting
+             - before_food_percent
+             - after_food_percent
              - confidence
              - reason
 
              Valid values:
-             - status must be either approved or rejected
+             - is_real_scene must be a boolean
+             - same_meal_setting must be a boolean
+             - before_food_percent must be an integer from 0 to 100 representing how much meaningful food is visible in the before image
+             - after_food_percent must be an integer from 0 to 100 representing how much food remains in the after image
              - confidence must be a number from 0 to 1
              - reason must be a short phrase explaining the decision
 
+             Approval rubric:
+             - before_food_percent should be low, such as 0 to 10, when the before image is empty, nearly empty, or already finished
+             - approve only when is_real_scene is true, same_meal_setting is true, before_food_percent is at least 25, after_food_percent is at most 10, and the before image clearly contains more food than the after image
+             - if the before image is empty or nearly empty, return a low before_food_percent and do not approve
+             - if you are uncertain, be conservative in the percentages and do not approve
+
              Confidence rules:
-             - use higher confidence only when the same real meal setting is clear and the after image is clearly at least 90 percent empty
+             - use higher confidence only when the same real meal setting is clear, the before image clearly starts with food present, and the after image is clearly at least 90 percent empty
              - use high confidence rejection when a screen, screenshot, or displayed food image is visible
 
         """
@@ -78,19 +92,24 @@ class PointsVerificationService:
         ai_result = await self.openai_client.generate_json_points(
             system_prompt, before_image_url, after_image_url
         )
+        status = self._derive_ai_status(ai_result)
         logger.info(
-            "Points verification AI decision trans_id=%s user_id=%s status=%s confidence=%s reason=%s",
+            "Points verification AI decision trans_id=%s user_id=%s status=%s confidence=%s reason=%s is_real_scene=%s same_meal_setting=%s before_food_percent=%s after_food_percent=%s",
             request.trans_id,
             request.user_id,
-            ai_result.get("status"),
+            status,
             ai_result.get("confidence"),
             ai_result.get("reason"),
+            ai_result.get("is_real_scene"),
+            ai_result.get("same_meal_setting"),
+            ai_result.get("before_food_percent"),
+            ai_result.get("after_food_percent"),
         )
 
         return PointsVerificationProcessedResponse(
             trans_id=request.trans_id,
             user_id=request.user_id,
-            status=ai_result["status"],
+            status=status,
         )
 
     async def _run_screen_replay_precheck(
@@ -199,3 +218,42 @@ class PointsVerificationService:
         if self.screen_replay_model is None:
             return None
         return self.screen_replay_model.predict(result)
+
+    def _derive_ai_status(self, ai_result: dict) -> str:
+        is_real_scene = self._coerce_bool(ai_result.get("is_real_scene"))
+        same_meal_setting = self._coerce_bool(ai_result.get("same_meal_setting"))
+        before_food_percent = self._coerce_percent(ai_result.get("before_food_percent"))
+        after_food_percent = self._coerce_percent(ai_result.get("after_food_percent"))
+
+        is_approved = (
+            is_real_scene
+            and same_meal_setting
+            and before_food_percent >= 25
+            and after_food_percent <= 10
+            and before_food_percent >= after_food_percent + 15
+        )
+        return "approved" if is_approved else "rejected"
+
+    def _coerce_bool(self, value: object) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "yes", "1"}:
+                return True
+            if normalized in {"false", "no", "0"}:
+                return False
+        return False
+
+    def _coerce_percent(self, value: object) -> int:
+        if isinstance(value, bool):
+            return int(value) * 100
+        if isinstance(value, (int, float)):
+            return max(0, min(100, int(round(float(value)))))
+        if isinstance(value, str):
+            try:
+                parsed = float(value.strip())
+            except ValueError:
+                return 0
+            return max(0, min(100, int(round(parsed))))
+        return 0

@@ -17,15 +17,15 @@ services:
       - temporal-network
       - default
 
-#  mock_producer:
-#    build: ./mock-producer
-#    #    expose:
-#    #      - "8080"
-#    ports:
-#      - "9000:8080"
-#    depends_on:
-#      rabbitmq:
-#        condition: service_healthy
+  #  mock_producer:
+  #    build: ./mock-producer
+  #    #    expose:
+  #    #      - "8080"
+  #    ports:
+  #      - "9000:8080"
+  #    depends_on:
+  #      rabbitmq:
+  #        condition: service_healthy
 
   keycloak-esd:
     build:
@@ -59,7 +59,6 @@ services:
       - ./.env
     expose:
       - "8080"
-    
 
   payment-service:
     build:
@@ -182,7 +181,7 @@ services:
     environment:
       - SCREEN_REPLAY_MODEL_ENABLED=true
       - SCREEN_REPLAY_MODEL_PATH=/app/models/screen_replay_model.joblib
-      - SCREEN_REPLAY_MODEL_REJECT_THRESHOLD=0.5
+      - SCREEN_REPLAY_MODEL_REJECT_THRESHOLD=0.55
     expose:
       - "8080"
     depends_on:
