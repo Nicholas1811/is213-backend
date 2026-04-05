@@ -78,6 +78,8 @@ export default function MyOrders() {
   useEffect(() => {
     let mounted = true;
     let intervalId: ReturnType<typeof setInterval> | null = null;
+    let hasLoadedOnce = false;
+    let isFetching = false;
 
     if (!initialized) {
       return () => {
@@ -85,31 +87,41 @@ export default function MyOrders() {
       };
     }
 
-    async function loadOrders() {
-      setIsLoading(true);
-      setError(null);
+    async function loadOrders({ background = false } = {}) {
+      if (isFetching) return;
+
+      const shouldShowLoadingState = !background && !hasLoadedOnce;
+      isFetching = true;
+
+      if (shouldShowLoadingState) {
+        setIsLoading(true);
+        setError(null);
+      }
 
       try {
         const userId = keycloak.subject || "temp-user-id";
         const data = await getOrdersByUser(userId);
         if (mounted) {
           setOrders(data);
+          setError(null);
         }
+        hasLoadedOnce = true;
       } catch (loadError) {
         console.error("Failed to load orders", loadError);
-        if (mounted) {
+        if (mounted && !hasLoadedOnce) {
           setError("Failed to load order history.");
         }
       } finally {
-        if (mounted) {
+        if (mounted && shouldShowLoadingState) {
           setIsLoading(false);
         }
+        isFetching = false;
       }
     }
 
     void loadOrders();
     intervalId = setInterval(() => {
-      void loadOrders();
+      void loadOrders({ background: true });
     }, 10000);
 
     return () => {
