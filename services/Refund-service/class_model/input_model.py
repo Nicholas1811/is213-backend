@@ -13,6 +13,5 @@ from typing import Optional
 class RefundRequest(BaseModel):
     order_id: int
     user_id: str
-    points_amount: Optional[int] = None
     point_reference_id: Optional[str] = None
     payment_intent_id: Optional[str] = None

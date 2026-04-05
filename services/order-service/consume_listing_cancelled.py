@@ -48,7 +48,6 @@ def callback(ch, method, properties, body):
                 "id": order.get("id"),
                 "listing_id": order.get("listing_id"),
                 "user_id": order.get("user_id"),
-                "points_amount": order.get("total_paid"),
                 "point_reference_id": order.get("point_id"),
                 "payment_id": order.get("payment_id"),
                 "qty": order.get("qty"),

@@ -79,7 +79,6 @@ def on_refund_batch(ch, method, properties, body):
                 refund_payload = {
                     "order_id": order_id,
                     "user_id": user_id,
-                    "points_amount": order.get("points_amount"),
                     "point_reference_id": order.get("point_reference_id"),
                     "payment_id": order.get("payment_id"),
                     "qty": order.get("qty"),

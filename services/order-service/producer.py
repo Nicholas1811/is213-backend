@@ -14,7 +14,7 @@ def connect_rabbit():
         except pika.exceptions.AMQPConnectionError:
             time.sleep(5)
 
-def publish_to_refund(order_id, listing_id, user_id, points_amount, point_reference_id, payment_id, qty):
+def publish_to_refund(order_id, listing_id, user_id, point_reference_id, payment_id, qty):
     connection = connect_rabbit()
     channel = connection.channel()
     
@@ -37,7 +37,6 @@ def publish_to_refund(order_id, listing_id, user_id, points_amount, point_refere
         "order_id": str(order_id),  
         "listing_id": str(listing_id),
         "user_id": str(user_id),
-        "points_amount": str(points_amount),
         "point_reference_id": str(point_reference_id),
         "payment_id": str(payment_id),
         "qty" : qty
