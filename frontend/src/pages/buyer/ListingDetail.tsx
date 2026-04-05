@@ -38,6 +38,7 @@ export default function ListingDetail() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const userId = useAuthStore((s) => s.userId);
   const { keycloak, initialized } = useKeycloak();
+  const [usePoints, setUsePoints] = useState(true);
   //const pointsBalance = usePointsStore((s) => s.balance);
 
   useEffect(() => {
@@ -62,13 +63,24 @@ export default function ListingDetail() {
       .finally(() => setIsLoading(false));
   }, [id]);
 
+  const [points, setPoints] = useState(0);
+
+  useEffect(() => {
+    if (!keycloak?.subject) return;
+
+    getUserPointBalance(keycloak.subject)
+        .then((res) => setPoints(res?.balance ?? 0))
+        .catch(() => setPoints(0));
+  }, [keycloak.subject]);
+
+  const ptu = usePoints ? Math.max(0, points) : 0;
   async function handlePurchaseNow() {
     if (!listing) return;
     const effectiveUserId = keycloak.subject
     const result = await getUserPointBalance(effectiveUserId).catch(() => null);
 
     const balance = result?.balance ?? 0;
-    const pointToUse = Math.max(0, balance);
+    const pointToUse = usePoints ? Math.max(0, balance) : 0;
 
     console.log(balance, " balance");
     console.log(pointToUse, " Point to use");
@@ -236,11 +248,29 @@ export default function ListingDetail() {
           {/* Actions */}
           <Card>
             <CardContent className="pt-6 space-y-3">
+
               {!isSoldOut && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span>Use Points</span>
+                      <input
+                          type="checkbox"
+                          checked={usePoints}
+                          onChange={(e) => setUsePoints(e.target.checked)}
+                      />
+                    </div>
                 <div className="flex items-center justify-between text-sm">
                   <span>Subtotal ({quantity} item{quantity > 1 ? "s" : ""})</span>
                   <span className="font-semibold">${(unitPrice * quantity).toFixed(2)}</span>
                 </div>
+
+                <div className="flex items-center justify-between text-sm">
+                <span>
+  Points used {usePoints ? `(${ptu} points)` : "(Not using points)"}
+</span>
+            <span className="font-semibold">${(ptu/100).toFixed(2)}</span>
+        </div>
+                </>
               )}
               <Button
                 className="w-full gap-2"
