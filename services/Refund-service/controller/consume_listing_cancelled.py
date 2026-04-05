@@ -80,8 +80,7 @@ def on_refund_batch(ch, method, properties, body):
                     "order_id": order_id,
                     "user_id": user_id,
                     "point_reference_id": order.get("point_reference_id"),
-                    "payment_id": order.get("payment_id"),
-                    "qty": order.get("qty"),
+                    "payment_checkout_id": order.get("payment_id"),
                 }
 
                 print(f"[Refund] Processing order {order_id}")

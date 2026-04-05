@@ -33,19 +33,20 @@ def process_refund(data=None):
     if missing:
         return {"error": f"Missing required fields: {', '.join(missing)}"}, 400
     workflow_id = f"refund-{data['order_id']}"
-    async def start_workflow():
-        return await temporal_client.execute_workflow(
+    async def fire_workflow():
+        handle = await temporal_client.start_workflow(
             "RefundWorkflow",
             data,
             id=workflow_id,
             task_queue="refund-task-queue",
         )
+        return {"workflow_id": handle.id, "status": "STARTED"}
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(start_workflow())
+        result = loop.run_until_complete(fire_workflow())
         loop.close()
-        status_code = 200 if result.get("status") == "COMPLETED" else 500
+        status_code = 200
         return result, status_code
     except Exception as error:
         return {"error": str(error)}, 500
@@ -61,16 +62,17 @@ def send_notification(data=None):
     if missing:
         return {"error": f"Missing required fields: {', '.join(missing)}"}, 400
     workflow_id = f"refund-{data['order_id']}"
-    async def start_workflow():
-        return await temporal_client.execute_workflow(
+    async def fire_workflow():
+        handle = await temporal_client.start_workflow(
             "RefundWorkflow",
-            payload,
+            data,
             id=workflow_id,
             task_queue="refund-task-queue",
         )
+        return {"workflow_id": handle.id, "status": "STARTED"}
     try:
-        result = asyncio.run(start_workflow())
-        status_code = 200 if result.get("status") == "COMPLETED" else 500
+        result = asyncio.run(fire_workflow())
+        status_code = 200
         return jsonify(result), status_code
     except Exception as error:
         return {"error": str(error)}, 500
