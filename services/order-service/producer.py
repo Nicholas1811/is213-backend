@@ -14,7 +14,7 @@ def connect_rabbit():
         except pika.exceptions.AMQPConnectionError:
             time.sleep(5)
 
-def publish_to_refund(order_id, listing_id, user_id, point_reference_id, payment_id, qty):
+def publish_to_refund(order_id, listing_id, user_id, point_reference_id, payment_id, qty, points_amount):
     connection = connect_rabbit()
     channel = connection.channel()
     
@@ -34,12 +34,13 @@ def publish_to_refund(order_id, listing_id, user_id, point_reference_id, payment
     payload = {
         "event_id": str(uuid.uuid4()),
         "key": CANCEL_TASK_ROUTING_KEY,
-        "order_id": str(order_id),  
+        "order_id": str(order_id),
         "listing_id": str(listing_id),
         "user_id": str(user_id),
-        "point_reference_id": str(point_reference_id),
-        "payment_id": str(payment_id),
-        "qty" : qty
+        "points_amount": points_amount if points_amount is not None else 0,
+        "point_reference_id": str(point_reference_id) if point_reference_id else "",
+        "payment_id": str(payment_id) if payment_id else "",
+        "qty": qty
     }
 
     notif_payload = {

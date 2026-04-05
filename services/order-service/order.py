@@ -196,29 +196,26 @@ def update_order(order_id: int) -> tuple[dict[str, Any], int]:
 @app.put("/cancel/<int:order_id>")
 def update_order_status(order_id: int) -> tuple[dict[str, str], int]:
 	try:
-		with _db_engine().begin() as connection:
-			# Step 1: Select the data so we know what to publish
-			select_result = connection.execute(
+		# Step 1: Fetch the order
+		with _db_engine().connect() as connection:
+			row = connection.execute(
 				text("SELECT * FROM orders WHERE id = :id"),
 				{"id": order_id},
-			)
-			row = select_result.mappings().first()
-			if not row:
-				return {"error": "Order not found"}, 404
+			).mappings().first()
 
-			# Step 2: Publish to refund service first
-			from producer import publish_to_refund
-			publish_to_refund(order_id, row.listing_id, row.user_id, row.point_id, row.payment_id, row.qty)
+		if not row:
+			return {"error": "Order not found"}, 404
 
+		# Step 2: Publish to RabbitMQ to process refund and update status
+		from producer import publish_to_refund
+		if row.point_id and row.point_id != "Empty":
+			publish_to_refund(order_id, row.listing_id, row.user_id, row.point_id, row.payment_id, row.qty, 0)
+		else:
+			publish_to_refund(order_id, row.listing_id, row.user_id, "", row.payment_id, row.qty, 0)
 
-			# Step 3: Perform the update
-			connection.execute(
-				text("UPDATE orders SET status = 'REFUND' WHERE id = :id"),
-				{"id": order_id},
-			)
-
-			return {"status": "cancelled"}, 200	
+		return {"status": "cancelled"}, 200
 	except Exception as e:
+		print(f"[ERROR] Failed to cancel order {order_id}: {e}", flush=True)
 		return {"error": f"Failed to cancel order: {e}"}, 500
 
 @app.get("/user/<string:user_id>")

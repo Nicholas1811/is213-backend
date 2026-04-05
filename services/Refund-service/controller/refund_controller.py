@@ -46,7 +46,7 @@ def process_refund(data=None):
         result = loop.run_until_complete(start_workflow())
         loop.close()
         status_code = 200 if result.get("status") == "COMPLETED" else 500
-        return jsonify(result), status_code
+        return result, status_code
     except Exception as error:
         return {"error": str(error)}, 500
 

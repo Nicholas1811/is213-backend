@@ -27,11 +27,7 @@ async def create_order(data):
 
 @activity.defn
 async def cancel_order(data):
-    r = requests.put(f"http://order-service:8080/{data['order_id']}",
-                     json={
-                         "status": "CANCELLED"
-                     }
-                     )
+    r = requests.put(f"http://order-service:8080/cancel/{data['order_id']}")
     if r.status_code >= 400 or r.status_code >= 500:
         raise Exception(f"Order service failed: {r.status_code} {r.text}")
     return r.json()
