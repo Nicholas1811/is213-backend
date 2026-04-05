@@ -1,8 +1,9 @@
 import { useEffect, type ReactNode } from "react";
 import { useKeycloak } from "@react-keycloak/web";
 import { isKeycloakConfigured } from "@/lib/keycloak";
+import { resetKeycloakLoginGuard, startKeycloakLogin } from "@/lib/keycloakLogin";
 import { UserRole } from "@/lib/constants";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -12,14 +13,25 @@ interface ProtectedRouteProps {
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const { keycloak, initialized } = useKeycloak();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    if (isKeycloakConfigured && initialized && !keycloak.authenticated) {
-      keycloak.login({
-        redirectUri: window.location.href,
-      });
+    if (!isKeycloakConfigured || !initialized) {
+      return;
     }
-  }, [initialized, keycloak]);
+
+    if (keycloak.authenticated) {
+      resetKeycloakLoginGuard();
+      return;
+    }
+
+    void startKeycloakLogin(keycloak, {
+      redirectUri: window.location.href,
+    }).catch((error) => {
+      console.error("Failed to trigger Keycloak login", error);
+      resetKeycloakLoginGuard();
+    });
+  }, [initialized, keycloak, keycloak.authenticated, location.key]);
 
   // Handle role-based access control
   useEffect(() => {

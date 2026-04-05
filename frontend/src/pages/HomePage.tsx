@@ -4,6 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuthStore } from "@/store/authStore";
 import { APP_NAME, UserRole } from "@/lib/constants";
 import { useKeycloak } from "@react-keycloak/web";
+import { isKeycloakConfigured } from "@/lib/keycloak";
+import { startKeycloakLogin } from "@/lib/keycloakLogin";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -11,6 +13,8 @@ export default function HomePage() {
   const setRole = useAuthStore((s) => s.setRole);
 
   function handleRoleSelect(role: UserRole) {
+    const targetPath = role === UserRole.BUYER ? "/buyer" : "/seller";
+
     // If already authenticated, respect the actual Keycloak role
     if (keycloak.authenticated) {
       const isBuyer = keycloak.hasRealmRole("buyer");
@@ -29,8 +33,17 @@ export default function HomePage() {
 
     // Otherwise (unauthenticated or no specific role), proceed with selection
     setRole(role);
-    // Navigation is protected by ProtectedRoute in router.tsx
-    navigate(role === UserRole.BUYER ? "/buyer" : "/seller");
+
+    if (isKeycloakConfigured) {
+      void startKeycloakLogin(keycloak, {
+        redirectUri: `${window.location.origin}${targetPath}`,
+      }).catch((error) => {
+        console.error("Failed to start Keycloak login", error);
+      });
+      return;
+    }
+
+    navigate(targetPath);
   }
 
   return (

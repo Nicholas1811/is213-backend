@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import { RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactKeycloakProvider } from "@react-keycloak/web";
@@ -9,6 +9,12 @@ import keycloak, { isKeycloakConfigured } from "@/lib/keycloak";
 import { resolveNotificationUserId } from "@/lib/notificationUser";
 import { router } from "@/router";
 import { useNotificationStore } from "@/store/notificationStore";
+
+const keycloakInitOptions = {
+  onLoad: "check-sso" as const,
+  checkLoginIframe: false,
+  messageReceiveTimeout: 3000,
+};
 
 function getPayloadEventKey(payload: {
   messageId?: string;
@@ -32,7 +38,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ReactKeycloakProvider authClient={keycloak}>
+    <ReactKeycloakProvider authClient={keycloak} initOptions={keycloakInitOptions}>
       {children}
     </ReactKeycloakProvider>
   );
@@ -51,7 +57,7 @@ export default function App() {
   const refreshFromApi = useNotificationStore((s) => s.refreshFromApi);
   const recentlyHandledRef = useRef<Map<string, number>>(new Map());
 
-  const handleIncomingPayload = (payload: {
+  const handleIncomingPayload = useEffectEvent((payload: {
     messageId?: string;
     notification?: { title?: string; body?: string };
     data?: Record<string, string>;
@@ -67,7 +73,7 @@ export default function App() {
 
     recentlyHandledRef.current.set(eventKey, now);
     void refreshFromApi(resolveNotificationUserId(keycloak.subject));
-  };
+  });
 
   // Listen for foreground FCM messages
   useEffect(() => {

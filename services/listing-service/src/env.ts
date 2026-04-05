@@ -9,7 +9,7 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().default(9999),
   LISTING_DATABASE_URL: z.string(),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
-  RABBITMQ_URL: z.string().default("amqp://localhost:5672"),
+  RABBITMQ_URL: z.string().default("amqp://rabbitmq:5672"),
   RABBITMQ_LISTING_EXCHANGE: z.string().default("listing.events"),
   RABBITMQ_QUEUE: z.string().default("listing.sync.q"),
   RABBITMQ_LISTING_SYNC_EXCHANGE: z.string().default("ai.events"),
