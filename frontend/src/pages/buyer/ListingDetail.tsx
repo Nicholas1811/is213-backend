@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { ArrowLeft, ShoppingBag, Minus, Plus, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { useAuthStore } from "@/store/authStore";
-//import { usePointsStore } from "@/store/pointsStore";
 import apiClient from "@/api/client";
 import { ENDPOINTS } from "@/api/endpoints";
 import { fetchImageUrl } from "@/api/s3";
 import { purchaseNow } from "@/api/purchaseEndpoints";
-import {useKeycloak} from "@react-keycloak/web";
-import { getUserPointBalance  } from "@/api/pointsEndpoints.ts";
+import { useKeycloak } from "@react-keycloak/web";
+import { getUserPointBalance } from "@/api/pointsEndpoints";
 
 interface ApiListing {
   id: number;
@@ -30,16 +28,15 @@ interface ApiListing {
 
 export default function ListingDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
   const [listing, setListing] = useState<ApiListing | null>(null);
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const userId = useAuthStore((s) => s.userId);
-  const { keycloak, initialized } = useKeycloak();
+  const { keycloak } = useKeycloak();
   const [usePoints, setUsePoints] = useState(true);
-  //const pointsBalance = usePointsStore((s) => s.balance);
 
   useEffect(() => {
     if (!id) return;
@@ -66,21 +63,31 @@ export default function ListingDetail() {
   const [points, setPoints] = useState(0);
 
   useEffect(() => {
-    if (!keycloak?.subject) return;
+    const subjectId = keycloak.subject;
+    if (!subjectId) return;
 
-    getUserPointBalance(keycloak.subject)
+    getUserPointBalance(subjectId)
         .then((res) => setPoints(res?.balance ?? 0))
         .catch(() => setPoints(0));
   }, [keycloak.subject]);
-
-  const ptu = usePoints ? Math.max(0, points) : 0;
+  const totalCents = (listing?.unitPriceCents ?? 0) * quantity;
+  const maxRedeemablePoints = Math.min(Math.max(0, points), Math.max(0, totalCents));
+  const ptu = usePoints ? maxRedeemablePoints : 0;
   async function handlePurchaseNow() {
     if (!listing) return;
-    const effectiveUserId = keycloak.subject
+    const effectiveUserId = keycloak.subject;
+    if (!effectiveUserId) {
+      toast.error("You need to be signed in to place an order.");
+      return;
+    }
+
     const result = await getUserPointBalance(effectiveUserId).catch(() => null);
 
     const balance = result?.balance ?? 0;
-    const pointToUse = usePoints ? Math.max(0, balance) : 0;
+    const orderTotalCents = Math.max(0, (listing.unitPriceCents ?? 0) * quantity);
+    const pointToUse = usePoints
+      ? Math.min(Math.max(0, balance), orderTotalCents)
+      : 0;
 
     console.log(balance, " balance");
     console.log(pointToUse, " Point to use");
@@ -101,12 +108,17 @@ export default function ListingDetail() {
         return;
       }
 
-      if ("status" in response) {
-        toast.success("Purchase successful", {
-          description: response.status,
-        });
-        return;
-      }
+      const successMessage
+        = "status" in response
+          ? response.status
+          : "message" in response
+            ? response.message
+            : "Your order has been created.";
+
+      toast.success("Purchase successful", {
+        description: successMessage,
+      });
+      navigate("/buyer/orders");
     } catch (error) {
       console.error("Failed to purchase listing", error);
       toast.error("Purchase failed. Please try again.");
