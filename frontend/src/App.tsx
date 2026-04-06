@@ -3,6 +3,7 @@ import { RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactKeycloakProvider } from "@react-keycloak/web";
 import { onMessage } from "firebase/messaging";
+import type { KeycloakInitOptions } from "keycloak-js";
 import { Toaster } from "@/components/ui/sonner";
 import { messaging } from "@/firebase/firebase";
 import keycloak, { isKeycloakConfigured } from "@/lib/keycloak";
@@ -10,8 +11,10 @@ import { resolveNotificationUserId } from "@/lib/notificationUser";
 import { router } from "@/router";
 import { useNotificationStore } from "@/store/notificationStore";
 
-const keycloakInitOptions = {
-  onLoad: "check-sso" as const,
+const keycloakInitOptions: KeycloakInitOptions = {
+  // Disable the provider's default auto check-sso so public pages still render
+  // when Keycloak is unavailable. Login starts only from explicit auth actions.
+  onLoad: undefined,
   checkLoginIframe: false,
   messageReceiveTimeout: 3000,
 };
