@@ -115,23 +115,9 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         workflow_id = metadata.get("workflow_id")
 
         print(f"--- WORKFLOW ID FOUND: {workflow_id} ---")
-        if workflow_id:
-            try:
-                print(f"--- ATTEMPTING SIGNAL TO: {workflow_id} ---")
-
-                global temporal_client
-                if not temporal_client:
-                    print("--- LAZY CONNECT TO TEMPORAL ---")
-                    temporal_client = await Client.connect("temporal:7233")
-
-                handle = temporal_client.get_workflow_handle(workflow_id)
-                await handle.signal("confirm_payment")
-
-                print("--- SIGNAL SENT SUCCESSFULLY ---")
-
-            except Exception as e:
-                print(f"Failed to signal Temporal: {e}")
-
+        
+        # make new payment object, try write to db then signal temporal
+        # if cannot write to db, dont signal and throw http 400
         new_payment = Payment(
                 payment_stripe_id=payment_stripe_id,
                 user_id=metadata.get("user_id"),
@@ -144,8 +130,24 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         
         try:
             create_payment(payment_data=new_payment, db=db)
+            if workflow_id:
+                try:
+                    print(f"--- ATTEMPTING SIGNAL TO: {workflow_id} ---")
+
+                    global temporal_client
+                    if not temporal_client:
+                        print("--- LAZY CONNECT TO TEMPORAL ---")
+                        temporal_client = await Client.connect("temporal:7233")
+
+                    handle = temporal_client.get_workflow_handle(workflow_id)
+                    await handle.signal("confirm_payment")
+
+                    print("--- SIGNAL SENT SUCCESSFULLY ---")
+
+                except Exception as e:
+                    print(f"Failed to signal Temporal: {e}")
         except Exception as e:
-            print(e)
+            raise HTTPException(status_code=400, detail="Error writing payment details to DB.")
 
     return {"status": "success"}
 
@@ -173,10 +175,10 @@ async def refund_payment(refund_request: RefundRequest, db: Session = Depends(ge
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# test routes for payment success/fail - to send event to msg broker
-@router.get("/test")
-async def testRoute():
-    return {"message": "testing payment"}
+# # test routes for payment success/fail - to send event to msg broker
+# @router.get("/test")
+# async def testRoute():
+#     return {"message": "testing payment"}
 
 @router.get('/payment-success')
 async def payment_success(session_id: str):
@@ -187,8 +189,8 @@ async def payment_success(session_id: str):
     except Exception:
             raise HTTPException(status_code=400, detail="Payment not successful.")
 
-@router.get('/payment-failed')
-async def payment_failed():
-    return {"message": "Payment failed!"}
+# @router.get('/payment-failed')
+# async def payment_failed():
+#     return {"message": "Payment failed!"}
 
 app.include_router(router)
