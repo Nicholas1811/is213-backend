@@ -13,7 +13,7 @@ async def use_points(data):
             "user_id": data['user_id'],
             "points_changed": data['points_changed'] * -1,
             "transaction_type" : "SPEND",
-            "reference_id" : data['reference_id'] ## To edit
+            "reference_id" : str(uuid.uuid4())
         }
     )
     print("Point entry is: " , r.json(), flush=True)
@@ -29,7 +29,7 @@ async def refund_points(data):
             "user_id": data['user_id'],
             "points_changed": data['points_changed'],
             "transaction_type" : "REFUND",
-            "reference_id" : data['reference_id'] ## To edit.
+            "reference_id" : data['reference_id']
         }
     )
     print("Point entry refund is: " , r.json(), flush=True)
