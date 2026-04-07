@@ -99,4 +99,4 @@ def on_refund_batch(ch, method, properties, body):
 
     except Exception as e:
         print(f"[Refund] Batch error: {e}")
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)

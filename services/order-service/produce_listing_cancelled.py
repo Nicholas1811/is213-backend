@@ -14,15 +14,20 @@ def _json_default(value):
         return float(value)
     raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
+def connect_rabbit():
+    while True:
+        try:
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+            return connection
+        except pika.exceptions.AMQPConnectionError:
+            time.sleep(5)
 
 def publish_refund_batch(orders: list[dict]):
     if not orders:
         print("[Producer] No orders to refund")
         return
 
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST)
-    )
+    connection = connect_rabbit()
     channel = connection.channel()
 
     channel.exchange_declare(

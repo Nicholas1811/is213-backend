@@ -63,6 +63,6 @@ def on_order_result(ch, method, properties, body):
         return
     except Exception as e:
         print(f"[Consumer] Error processing refund: {e}", flush=True)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
         return
 
