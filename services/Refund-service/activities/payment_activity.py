@@ -4,14 +4,15 @@ from class_model.input_model import RefundRequest
 
 @activity.defn
 def refund_payment(data):
-    payment_checkout_id = data.get("payment_checkout_id")
+    payment_checkout_id = data.get("payment_id")
+    print(payment_checkout_id, flush=True)
     if not payment_checkout_id or str(payment_checkout_id).strip().lower() in ["none", "empty"]:
         return {"status": "skipped", "message": "No payment to refund"}
 
     response = requests.post(
         "http://payment-service:8080/refund",
         json={
-            "payment_checkout_id": data.get("payment_checkout_id")
+            "payment_checkout_id": data.get("payment_id")
         },
         timeout=10,
     )

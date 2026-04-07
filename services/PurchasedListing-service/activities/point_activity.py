@@ -13,7 +13,7 @@ async def use_points(data):
             "user_id": data['user_id'],
             "points_changed": data['points_changed'] * -1,
             "transaction_type" : "SPEND",
-            "reference_id" : str(uuid.uuid4())
+            "reference_id" : str(uuid.uuid4()) ## temp uuid here.
         }
     )
     print("Point entry is: " , r.json(), flush=True)
