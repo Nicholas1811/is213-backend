@@ -1,6 +1,7 @@
 import pika
 import json
 import os
+import time
 from decimal import Decimal
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")

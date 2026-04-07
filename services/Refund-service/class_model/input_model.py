@@ -15,3 +15,4 @@ class RefundRequest(BaseModel):
     user_id: str
     point_reference_id: Optional[str] = None
     payment_checkout_id: Optional[str] = None
+    payment_required: Optional[bool] = False

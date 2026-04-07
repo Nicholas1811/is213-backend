@@ -10,26 +10,28 @@ def get_actual_points(user_id, ref_id, default_points):
         if res.status_code == 200:
             tx = res.json()
             return abs(int(tx.get("points_changed", 0)))
+        raise Exception(f"Point lookup failed: {res.status_code} {res.text}")
     except Exception as e:
-        print(f"Failed to fetch points for {ref_id}: {e}")
-    return default_points
+        raise Exception(f"Failed to fetch points for {ref_id}: {e}")
 
 @activity.defn
 def restore_points(data):
     ref_id = data.get("point_reference_id")
     user_id = data.get("user_id")
     
+    if not ref_id or str(ref_id).strip().lower() in ["none", "empty"]:
+        return {"status": "skipped", "message": "No points to restore"}
+
     points_amount = get_actual_points(user_id, ref_id, 0)
 
-    
-    if not ref_id or str(ref_id).strip().lower() in ["none", "empty"] or points_amount is None or float(points_amount) <= 0:
-        return {"status": "skipped", "message": "No points to restore"}
+    if points_amount is None or int(points_amount) <= 0:
+        raise Exception(f"Invalid points amount resolved for refund reference {ref_id}: {points_amount}")
 
     response = requests.post(
         "http://point-service:8080/transaction",
         json={
             "user_id": data.get("user_id"),
-            "points_changed": float(points_amount),
+            "points_changed": int(points_amount),
             "transaction_type": "REFUND",
             "reference_id": str(ref_id),
         },
@@ -44,11 +46,14 @@ def restore_points(data):
 def deduct_points_compensation(data):
     ref_id = data.get("point_reference_id")
     user_id = data.get("user_id")
-    
-    points_amount = get_actual_points(user_id, ref_id, 0)
-        
-    if not ref_id or str(ref_id).strip().lower() in ["none", "empty"] or points_amount is None or float(points_amount) <= 0:
+
+    if not ref_id or str(ref_id).strip().lower() in ["none", "empty"]:
         return {"status": "skipped", "message": "No points to compensate"}
+
+    points_amount = get_actual_points(user_id, ref_id, 0)
+
+    if points_amount is None or int(points_amount) <= 0:
+        raise Exception(f"Invalid points amount resolved for compensation reference {ref_id}: {points_amount}")
 
     response = requests.post(
         "http://point-service:8080/transaction",

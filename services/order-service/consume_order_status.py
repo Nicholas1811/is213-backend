@@ -9,8 +9,8 @@ from order import _db_engine
 
 RABBITMQ_HOST = "rabbitmq"
 EXCHANGE_NAME = "order.events"
-ROUTING_KEY = "order.status.refunded"
-QUEUE_NAME = "order.status.refunded.queue"
+ROUTING_KEY = "order.status.*"
+QUEUE_NAME = "order.status.queue"
 
 
 def connect():
@@ -35,7 +35,7 @@ def callback(ch, method, properties, body):
         if not order_id:
             raise ValueError("Missing order_id in order status event")
 
-        if status != "REFUNDED":
+        if status not in {"REFUNDED", "PENDING_REFUND", "REFUND_FAILED"}:
             print(f"[OrderStatus] Ignoring unsupported status '{status}' for order {order_id}")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return

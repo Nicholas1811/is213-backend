@@ -3,7 +3,7 @@ import json
 import os
 from controller.constants import REFUND_TASK_QUEUE
 from controller.refund_controller import process_refund
-from .order_status_publisher import publish_order_refunded
+from .order_status_publisher import publish_order_status
 
 def start_order_result_consumer():
     rabbit_host = os.environ.get('RABBITMQ_HOST', 'localhost')
@@ -55,9 +55,29 @@ def on_order_result(ch, method, properties, body):
         
         print(f"[Consumer] Received cancel request for order {order_id}", flush=True)
 
-        result = process_refund(data)
-        publish_order_refunded(order_id, data.get("user_id"))
-        print(f"[Consumer] Refund result: {result}", flush=True)
+        refund_payload = {
+            "order_id": data.get("order_id"),
+            "user_id": data.get("user_id"),
+            "point_reference_id": data.get("point_reference_id"),
+            "payment_checkout_id": data.get("payment_id"),
+            "payment_required": bool(data.get("payment_required")),
+        }
+
+        result = process_refund(refund_payload)
+        if isinstance(result, tuple):
+            payload, status_code = result
+            if status_code >= 400:
+                raise Exception(f"Failed to start refund workflow: {payload}")
+            result_payload = payload
+        else:
+            result_payload = result
+
+        start_status = str(result_payload.get("status", "")).upper()
+        if start_status not in {"STARTED", "ALREADY_IN_PROGRESS"}:
+            raise Exception(f"Unexpected refund workflow status: {result_payload}")
+
+        publish_order_status(order_id, "PENDING_REFUND", data.get("user_id"))
+        print(f"[Consumer] Refund result: {result_payload}", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return

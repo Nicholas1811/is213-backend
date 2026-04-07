@@ -2,6 +2,7 @@ import asyncio
 import time
 from flask import Flask, jsonify, request
 from temporalio.client import Client
+from temporalio.common import WorkflowIDReusePolicy
 from typing import Optional
 from pydantic import BaseModel, ValidationError
 from class_model.input_model import RefundRequest
@@ -39,6 +40,7 @@ def process_refund(data=None):
             data,
             id=workflow_id,
             task_queue="refund-task-queue",
+            id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE_FAILED_ONLY,
         )
         return {"workflow_id": handle.id, "status": "STARTED"}
     try:
@@ -49,7 +51,10 @@ def process_refund(data=None):
         status_code = 200
         return result, status_code
     except Exception as error:
-        return {"error": str(error)}, 500
+        error_text = str(error)
+        if "already started" in error_text.lower() or "already exists" in error_text.lower():
+            return {"workflow_id": workflow_id, "status": "ALREADY_IN_PROGRESS"}, 202
+        return {"error": error_text}, 500
 
 # send refund confirmation to notification service (mock_producer, producer.py)
 def send_notification(data=None):

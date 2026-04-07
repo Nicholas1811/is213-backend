@@ -46,7 +46,7 @@ const statusConfig = {
 function normalizeOrderStatus(status: string): keyof typeof statusConfig {
   const normalized = status.toLowerCase();
 
-  if (normalized === "refund_pending" || normalized === "refunding" || normalized === "refund_requested") {
+  if (normalized === "pending_refund" || normalized === "refund_pending" || normalized === "refunding" || normalized === "refund_requested") {
     return "refunding";
   }
   if (normalized === "refunded") return "refunded";
@@ -147,7 +147,7 @@ export default function MyOrders() {
       
       // Optimistic update while awaiting async refund completion event
       setOrders(prev => prev.map(order => 
-        String(order.id) === String(orderToCancel) ? { ...order, status: "REFUNDED" } : order
+        String(order.id) === String(orderToCancel) ? { ...order, status: "PENDING_REFUND" } : order
       ));
     } catch (err) {
       console.error("Failed to cancel order:", err);

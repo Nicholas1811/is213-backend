@@ -7,7 +7,6 @@ import pika
 
 RABBITMQ_HOST = os.environ.get("RABBITMQ_HOST", "rabbitmq")
 EXCHANGE_NAME = "order.events"
-ROUTING_KEY = "order.status.refunded"
 
 
 def connect_rabbit():
@@ -19,7 +18,10 @@ def connect_rabbit():
             time.sleep(5)
 
 
-def publish_order_refunded(order_id, user_id=None):
+def publish_order_status(order_id, status, user_id=None):
+    normalized_status = str(status).strip().upper()
+    routing_key = f"order.status.{normalized_status.lower()}"
+
     connection = connect_rabbit()
     channel = connection.channel()
 
@@ -31,18 +33,22 @@ def publish_order_refunded(order_id, user_id=None):
 
     event = {
         "event_id": str(uuid.uuid4()),
-        "event": ROUTING_KEY,
+        "event": routing_key,
         "order_id": str(order_id),
-        "status": "REFUNDED",
+        "status": normalized_status,
         "user_id": str(user_id) if user_id is not None else None,
         "source": "refund-service",
     }
 
     channel.basic_publish(
         exchange=EXCHANGE_NAME,
-        routing_key=ROUTING_KEY,
+        routing_key=routing_key,
         body=json.dumps(event),
         properties=pika.BasicProperties(delivery_mode=2),
     )
 
     connection.close()
+
+
+def publish_order_refunded(order_id, user_id=None):
+    publish_order_status(order_id, "REFUNDED", user_id)

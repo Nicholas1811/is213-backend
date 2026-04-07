@@ -6,6 +6,7 @@ import threading
 
 from activities.payment_activity import refund_payment
 from activities.point_activity import deduct_points_compensation, restore_points
+from activities.order_status_activity import publish_order_status_activity
 from workflows.refund_workflow import RefundWorkflow
 from controller.consumer import start_order_result_consumer
 from controller.consume_listing_cancelled import start_refund_consumer
@@ -35,6 +36,7 @@ async def main():
                 refund_payment,
                 restore_points,
                 deduct_points_compensation,
+                publish_order_status_activity,
             ],
             activity_executor=activity_executor,
         )

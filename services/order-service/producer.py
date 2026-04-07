@@ -40,6 +40,7 @@ def publish_to_refund(order_id, listing_id, user_id, point_reference_id, payment
         "points_amount": points_amount if points_amount is not None else 0,
         "point_reference_id": str(point_reference_id) if point_reference_id else "",
         "payment_id": str(payment_id) if payment_id else "",
+        "payment_required": bool(payment_id and str(payment_id).strip().lower() not in ["", "none", "empty"]),
         "qty": qty
     }
 

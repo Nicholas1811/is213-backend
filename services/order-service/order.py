@@ -183,7 +183,7 @@ def update_order(order_id: int) -> tuple[dict[str, Any], int]:
 		params = {**normalized, "id": order_id}
 
 		with _db_engine().begin() as connection:
-			# Prevent race condition: Do not allow a late "PAID" update to overwrite a "REFUNDED" status
+			# Prevent race condition: Do not allow late "PAID" updates to overwrite refund states
 			current_order = connection.execute(
 				text("SELECT status FROM orders WHERE id = :id"),
 				{"id": order_id}
@@ -192,9 +192,12 @@ def update_order(order_id: int) -> tuple[dict[str, Any], int]:
 			if not current_order:
 				return {"error": "Order not found"}, 404
 				
-			if current_order["status"] == "REFUNDED" and normalized.get("status") == "PAID":
-				print(f"[Order Service] Blocked attempt to update Refunded order {order_id} back to PAID.", flush=True)
-				return {"status": "Order is already REFUNDED, ignoring PAID update"}, 200
+			if normalized.get("status") == "PAID" and current_order["status"] in {"PENDING_REFUND", "REFUNDED", "REFUND_FAILED", "CANCELLED"}:
+				print(
+					f"[Order Service] Blocked attempt to update order {order_id} from {current_order['status']} to PAID.",
+					flush=True,
+				)
+				return {"status": f"Order is already {current_order['status']}, ignoring PAID update"}, 200
 
 			row = connection.execute(query, params).mappings().first()
 			if not row:
