@@ -3,9 +3,10 @@ import json
 import os
 import time
 
-from controller.refund_controller import process_refund
+from controller.refund_controller import execute_refund
 from controller.notification_publisher import publish_event
 from .order_status_publisher import publish_order_refunded
+from refund_logic import refund_result_completed
 
 EXCHANGE_NAME = "refund.events"
 ROUTING_KEY = "refund.batch.requested"
@@ -84,12 +85,19 @@ def on_refund_batch(ch, method, properties, body):
                 }
 
                 print(f"[Refund] Processing order {order_id}")
-                process_refund(refund_payload)
-                publish_order_refunded(order_id, user_id)
-                ##Should publish to affected users.
-                publish_event(order_id, user_id)
+                result = execute_refund(refund_payload, wait_for_completion=True)
+                if refund_result_completed(result):
+                    publish_order_refunded(order_id, user_id)
+                    ##Should publish to affected users.
+                    publish_event(order_id, user_id)
+                else:
+                    print(
+                        f"[Refund] Workflow for order {order_id} ended with status "
+                        f"{result.get('status')}; skipping refunded event",
+                        flush=True,
+                    )
 
-                print(f"[Refund] Success for order {order_id}")
+                print(f"[Refund] Workflow result for order {order_id}: {result}", flush=True)
 
             except Exception as e:
                 print(f"[Refund] Failed for order {order.get('id')}: {e}")

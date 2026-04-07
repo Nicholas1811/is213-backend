@@ -1,8 +1,7 @@
-import asyncio
 from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
-from class_model.input_model import RefundRequest
+from refund_logic import derive_refund_workflow_status
 
 with workflow.unsafe.imports_passed_through():
     from activities.payment_activity import refund_payment
@@ -84,10 +83,9 @@ class RefundWorkflow:
                 "compensation": compensation,
             }
 
-        # Both succeeded!
+        # Final status depends on whether any refund work actually happened.
         return {
-            "status": "COMPLETED",
+            "status": derive_refund_workflow_status(payment_result, point_result),
             "payment": payment_result,
             "points": point_result,
         }
-

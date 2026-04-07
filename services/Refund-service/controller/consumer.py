@@ -2,8 +2,9 @@ import pika
 import json
 import os
 from controller.constants import REFUND_TASK_QUEUE
-from controller.refund_controller import process_refund
+from controller.refund_controller import execute_refund
 from .order_status_publisher import publish_order_refunded
+from refund_logic import refund_result_completed
 
 def start_order_result_consumer():
     rabbit_host = os.environ.get('RABBITMQ_HOST', 'localhost')
@@ -55,8 +56,15 @@ def on_order_result(ch, method, properties, body):
         
         print(f"[Consumer] Received cancel request for order {order_id}", flush=True)
 
-        result = process_refund(data)
-        publish_order_refunded(order_id, data.get("user_id"))
+        result = execute_refund(data, wait_for_completion=True)
+        if refund_result_completed(result):
+            publish_order_refunded(order_id, data.get("user_id"))
+        else:
+            print(
+                f"[Consumer] Refund workflow for order {order_id} ended with status "
+                f"{result.get('status')}; skipping refunded event",
+                flush=True,
+            )
         print(f"[Consumer] Refund result: {result}", flush=True)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -65,4 +73,3 @@ def on_order_result(ch, method, properties, body):
         print(f"[Consumer] Error processing refund: {e}", flush=True)
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
-
